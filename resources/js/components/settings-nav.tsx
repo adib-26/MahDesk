@@ -6,6 +6,7 @@ import { Link, usePage } from '@inertiajs/react';
 const items = [
     { title: 'General', name: 'desk.settings.general' },
     { title: 'Agents', name: 'desk.members.index' },
+    { title: 'Teams', name: 'desk.teams.index' },
     { title: 'SLA', name: 'desk.sla.index' },
     { title: 'Automations', name: 'desk.automations.index' },
 ] as const;

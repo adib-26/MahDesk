@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\TwoFactorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Inertia\Response;
 
 class TwoFactorAuthenticationController extends Controller
 {
-    public function __construct(private TwoFactorService $twoFactor) {}
+    public function __construct(
+        private TwoFactorService $twoFactor,
+        private AuditLogger $audit,
+    ) {}
 
     /**
      * Display two-factor authentication settings without exposing persisted secrets.
@@ -121,6 +125,8 @@ class TwoFactorAuthenticationController extends Controller
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
         ])->save();
+
+        $this->audit->record('two_factor.disabled', $user, null, $user);
 
         $request->session()->forget([
             TwoFactorService::PENDING_SECRET_SESSION_KEY,

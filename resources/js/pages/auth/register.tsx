@@ -32,7 +32,7 @@ export default function Register() {
     };
 
     return (
-        <AuthLayout title="Create an account" description="Enter your details below to create your account">
+        <AuthLayout title="Create a customer account" description="Register to view your tickets. Staff accounts are invitation-only.">
             <Head title="Register" />
             <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-6">
@@ -60,7 +60,7 @@ export default function Register() {
                             type="email"
                             required
                             tabIndex={2}
-                            autoComplete="email"
+                            autoComplete="username"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
                             disabled={processing}
@@ -70,9 +70,9 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="new-password">Password</Label>
                         <Input
-                            id="password"
+                            id="new-password"
                             type="password"
                             required
                             tabIndex={3}

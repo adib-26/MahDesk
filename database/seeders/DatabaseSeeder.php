@@ -30,6 +30,13 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
         ]);
 
+        User::factory()->create([
+            'name' => 'Platform Admin',
+            'email' => 'super@desk.test',
+            'password' => Hash::make('password'),
+            'is_super_admin' => true,
+        ]);
+
         $admin = User::factory()->create([
             'name' => 'Marcus Hale',
             'email' => 'admin@desk.test',

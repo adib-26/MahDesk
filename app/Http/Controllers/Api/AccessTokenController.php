@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\TwoFactorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,8 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class AccessTokenController extends Controller
 {
-    public function __construct(private TwoFactorService $twoFactor)
-    {
+    public function __construct(
+        private TwoFactorService $twoFactor,
+        private AuditLogger $audit,
+    ) {
     }
 
     /**
@@ -65,6 +68,14 @@ class AccessTokenController extends Controller
             $validated['device_name'],
             ['api:access'],
             $expiresAt,
+        );
+
+        $this->audit->record(
+            'token.created',
+            $user,
+            null,
+            $user,
+            ['device_name' => $validated['device_name']],
         );
 
         return response()->json([

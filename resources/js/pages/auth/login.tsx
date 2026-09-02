@@ -49,7 +49,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             required
                             autoFocus
                             tabIndex={1}
-                            autoComplete="email"
+                            autoComplete="username"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
                             placeholder="email@example.com"

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MemberRole;
 use App\Models\Workspace;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -35,8 +36,7 @@ class WorkspaceController extends Controller
         Gate::authorize('manageWorkspace', $workspace);
 
         return Inertia::render('desk/settings/general', [
-            'isOwner' => $workspace->roleOf(request()->user())?->isOrganizationAdmin() === true
-                && $workspace->roleOf(request()->user())?->value === 'owner',
+            'isOwner' => $workspace->roleOf(request()->user()) === MemberRole::Owner,
         ]);
     }
 

@@ -2,7 +2,7 @@ import { PriorityBadge, StatusBadge } from '@/components/desk-badges';
 import { Button } from '@/components/ui/button';
 import { relativeTime } from '@/lib/desk';
 import type { TicketPriority, TicketStatus } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 interface CustomerTicket {
     id: number;
@@ -29,7 +29,12 @@ export default function CustomerTicketsIndex({ ticketGroups }: { ticketGroups: T
                     <Link href={route('customer.tickets.index')} className="text-lg font-semibold">
                         OmniDesk Support
                     </Link>
-                    <span className="text-muted-foreground text-sm">My tickets</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-muted-foreground text-sm">My tickets</span>
+                        <Button variant="ghost" size="sm" onClick={() => router.post(route('logout'))}>
+                            Log out
+                        </Button>
+                    </div>
                 </div>
             </header>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,9 @@ use Inertia\Response;
 
 class SessionController extends Controller
 {
+    public function __construct(private AuditLogger $audit)
+    {
+    }
     /**
      * Display the authenticated user's active database sessions.
      */
@@ -70,6 +74,16 @@ class SessionController extends Controller
         $deleted = $this->sessionsFor($request)
             ->where('id', '!=', $request->session()->getId())
             ->delete();
+
+        if ($deleted) {
+            $this->audit->record(
+                'sessions.revoked_others',
+                $request->user(),
+                null,
+                $request->user(),
+                ['count' => $deleted],
+            );
+        }
 
         return back()->with(
             'success',

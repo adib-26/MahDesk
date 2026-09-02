@@ -31,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('invitations', function (Request $request) {
+            return Limit::perMinute(6)->by($request->user()?->id ?: $request->ip());
+        });
+
         Gate::policy(Ticket::class, TicketPolicy::class);
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(Contact::class, ContactPolicy::class);

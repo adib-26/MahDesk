@@ -2,16 +2,21 @@
 
 use App\Http\Controllers\AutomationRuleController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\CustomerTicketController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HelpCenterController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\KbArticleController;
 use App\Http\Controllers\KbCategoryController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\Platform\WorkspaceController as PlatformWorkspaceController;
 use App\Http\Controllers\SlaPolicyController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketMessageController;
 use App\Http\Controllers\WorkspaceController;
+use App\Services\HomeRedirector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -22,27 +27,39 @@ Route::get('/', function () {
         : Inertia::render('welcome');
 })->name('home');
 
-// Public help center (no auth required).
 Route::get('help/{workspace:slug}', [HelpCenterController::class, 'index'])->name('help.index');
 Route::get('help/{workspace:slug}/articles/{slug}', [HelpCenterController::class, 'show'])->name('help.article');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    // Entry point after login: forward to the user's first workspace or onboarding.
-    Route::get('dashboard', function (Request $request) {
-        $workspace = $request->user()->workspaces()->first();
+Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.show');
+Route::post('invitations/{token}', [InvitationController::class, 'accept'])
+    ->middleware('throttle:invitations')
+    ->name('invitations.accept');
 
-        return $workspace
-            ? redirect()->route('desk.dashboard', $workspace)
-            : redirect()->route('workspaces.create');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('dashboard', function (Request $request, HomeRedirector $home) {
+        return redirect()->to($home->url($request->user()));
     })->name('dashboard');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('workspaces.store');
 
+    Route::prefix('platform')->name('platform.')->group(function () {
+        Route::get('workspaces', [PlatformWorkspaceController::class, 'index'])->name('workspaces.index');
+        Route::post('workspaces', [PlatformWorkspaceController::class, 'store'])
+            ->middleware('throttle:invitations')
+            ->name('workspaces.store');
+        Route::delete('workspaces/{workspace}', [PlatformWorkspaceController::class, 'destroy'])->name('workspaces.destroy');
+    });
+
+    Route::prefix('customer')->name('customer.')->group(function () {
+        Route::get('tickets', [CustomerTicketController::class, 'index'])->name('tickets.index');
+        Route::get('tickets/{ticket}', [CustomerTicketController::class, 'show'])->name('tickets.show');
+        Route::post('tickets/{ticket}/messages', [CustomerTicketController::class, 'store'])->name('tickets.messages.store');
+    });
+
     Route::prefix('w/{workspace:slug}')->middleware('workspace')->name('desk.')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-        // Tickets
         Route::get('tickets', [TicketController::class, 'index'])->name('tickets.index');
         Route::post('tickets', [TicketController::class, 'store'])->name('tickets.store');
         Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
@@ -50,18 +67,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
         Route::post('tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->name('tickets.messages.store');
 
-        // Customers
         Route::get('contacts', [ContactController::class, 'index'])->name('contacts.index');
         Route::post('contacts', [ContactController::class, 'store'])->name('contacts.store');
         Route::get('contacts/{contact}', [ContactController::class, 'show'])->name('contacts.show');
         Route::patch('contacts/{contact}', [ContactController::class, 'update'])->name('contacts.update');
         Route::delete('contacts/{contact}', [ContactController::class, 'destroy'])->name('contacts.destroy');
 
-        // Tags
         Route::post('tags', [TagController::class, 'store'])->name('tags.store');
         Route::delete('tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
 
-        // Knowledge base
         Route::get('kb', [KbArticleController::class, 'index'])->name('kb.index');
         Route::get('kb/articles/create', [KbArticleController::class, 'create'])->name('kb.create');
         Route::post('kb/articles', [KbArticleController::class, 'store'])->name('kb.store');
@@ -72,15 +86,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('kb/categories/{category}', [KbCategoryController::class, 'update'])->name('kb.categories.update');
         Route::delete('kb/categories/{category}', [KbCategoryController::class, 'destroy'])->name('kb.categories.destroy');
 
-        // Workspace settings
         Route::get('settings', [WorkspaceController::class, 'edit'])->name('settings.general');
         Route::patch('settings', [WorkspaceController::class, 'update'])->name('settings.update');
         Route::delete('settings', [WorkspaceController::class, 'destroy'])->name('settings.destroy');
 
         Route::get('settings/members', [MemberController::class, 'index'])->name('members.index');
-        Route::post('settings/members', [MemberController::class, 'store'])->name('members.store');
+        Route::post('settings/members', [MemberController::class, 'store'])
+            ->middleware('throttle:invitations')
+            ->name('members.store');
         Route::patch('settings/members/{member}', [MemberController::class, 'update'])->name('members.update');
         Route::delete('settings/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
+        Route::delete('settings/invitations/{invitation}', [InvitationController::class, 'destroy'])->name('invitations.destroy');
+
+        Route::get('settings/teams', [TeamController::class, 'index'])->name('teams.index');
+        Route::post('settings/teams', [TeamController::class, 'store'])->name('teams.store');
+        Route::patch('settings/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
+        Route::delete('settings/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
+        Route::post('settings/teams/{team}/members', [TeamController::class, 'storeMember'])->name('teams.members.store');
+        Route::delete('settings/teams/{team}/members/{member}', [TeamController::class, 'destroyMember'])->name('teams.members.destroy');
 
         Route::get('settings/sla', [SlaPolicyController::class, 'index'])->name('sla.index');
         Route::post('settings/sla', [SlaPolicyController::class, 'store'])->name('sla.store');

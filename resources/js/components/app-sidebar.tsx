@@ -19,9 +19,10 @@ import { BookOpen, BookText, CheckSquare, LayoutGrid, Plus, Settings2, Users } f
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
-    const { currentWorkspace, workspaces, memberRole } = usePage<SharedData>().props;
+    const { currentWorkspace, workspaces, memberRole, auth } = usePage<SharedData>().props;
     const workspace = currentWorkspace ?? workspaces[0];
-    const canManage = memberRole === 'owner' || memberRole === 'admin';
+    const canManage = memberRole === 'owner' || memberRole === 'admin' || memberRole === 'super_admin';
+    const isSuperAdmin = Boolean(auth.user?.is_super_admin);
 
     const mainNavItems: NavItem[] = workspace
         ? [
@@ -45,7 +46,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={workspace ? deskRoute('desk.dashboard', workspace) : route('dashboard')} prefetch>
+                            <Link href={isSuperAdmin ? route('platform.workspaces.index') : workspace ? deskRoute('desk.dashboard', workspace) : route('dashboard')} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -54,7 +55,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                {workspaces.length > 0 && (
+                {(workspaces.length > 0 || isSuperAdmin) && (
                     <SidebarGroup className="px-2 py-0">
                         <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
                         <SidebarMenu>
@@ -67,14 +68,16 @@ export function AppSidebar() {
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ))}
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                    <Link href={route('workspaces.create')}>
-                                        <Plus />
-                                        <span>New workspace</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            {isSuperAdmin && (
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild>
+                                        <Link href={route('platform.workspaces.index')}>
+                                            <Plus />
+                                            <span>Organizations</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            )}
                         </SidebarMenu>
                     </SidebarGroup>
                 )}

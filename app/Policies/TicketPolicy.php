@@ -128,7 +128,10 @@ class TicketPolicy
         return match ($role) {
             MemberRole::Owner, MemberRole::Admin => true,
             MemberRole::Manager => $ticket->isInTeamOf($user),
-            MemberRole::Agent => $ticket->isAssignedTo($user),
+            MemberRole::Agent => $ticket->isAssignedTo($user)
+                || ($ticket->assignee_id === null
+                    && $ticket->isInTeamOf($user)
+                    && $ticket->workspace->memberCanViewUnassigned($user)),
             MemberRole::Customer => $ticket->isOwnedByCustomer($user),
             null => false,
         };

@@ -29,12 +29,12 @@ class WorkspacePolicy
     }
 
     /**
-     * Keep workspace creation compatible with the current onboarding flow.
-     * Controllers can impose more restrictive product rules if required.
+     * Only platform administrators create organizations. Public registration
+     * never grants a privileged workspace role.
      */
     public function create(User $user): bool
     {
-        return true;
+        return $this->isPlatformSuperAdmin($user);
     }
 
     public function update(User $user, Workspace $workspace): bool

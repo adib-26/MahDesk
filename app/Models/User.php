@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MemberRole;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -24,7 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function staffWorkspaces(): BelongsToMany
     {
-        return $this->workspaces()->wherePivotIn('role', \App\Enums\MemberRole::staffValues());
+        return $this->workspaces()->wherePivotIn('role', MemberRole::staffValues());
     }
 
     public function assignedTickets(): HasMany

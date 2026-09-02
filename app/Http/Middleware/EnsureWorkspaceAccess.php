@@ -20,6 +20,7 @@ class EnsureWorkspaceAccess
         $role = $user->isSuperAdmin() ? null : $workspace->roleOf($user);
 
         abort_unless($user->isSuperAdmin() || $role !== null, 403, 'You are not a member of this workspace.');
+        abort_unless($user->isSuperAdmin() || $role->isStaff(), 403, 'Customers use the support portal, not the agent desk.');
 
         $request->attributes->set('memberRole', $user->isSuperAdmin() ? 'super_admin' : $role);
 

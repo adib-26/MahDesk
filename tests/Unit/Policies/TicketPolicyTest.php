@@ -93,6 +93,39 @@ class TicketPolicyTest extends TestCase
         $this->assertSame([$customerTicket->id], Ticket::query()->visibleTo($customer, $workspace)->pluck('id')->all());
     }
 
+    public function test_agents_can_see_unassigned_team_tickets_when_granted_the_queue_permission(): void
+    {
+        $workspace = $this->workspace('queues');
+        $agent = User::factory()->create();
+        $workspace->members()->attach($agent, [
+            'role' => MemberRole::Agent->value,
+            'can_view_unassigned' => true,
+        ]);
+
+        $team = Team::create(['workspace_id' => $workspace->id, 'name' => 'Support']);
+        $team->members()->attach($agent);
+        $contact = $this->contact($workspace, 'queue@example.test');
+        $unassigned = $this->ticket($workspace, $contact, 1, $team);
+
+        $policy = new TicketPolicy;
+
+        $this->assertTrue($policy->view($agent, $unassigned));
+        $this->assertTrue($policy->reply($agent, $unassigned));
+        $this->assertSame([$unassigned->id], Ticket::query()->visibleTo($agent, $workspace)->pluck('id')->all());
+    }
+
+    public function test_only_super_admins_can_create_workspaces(): void
+    {
+        $user = User::factory()->create();
+        $superAdmin = User::factory()->create();
+        $superAdmin->forceFill(['is_super_admin' => true])->save();
+
+        $policy = new WorkspacePolicy;
+
+        $this->assertFalse($policy->create($user));
+        $this->assertTrue($policy->create($superAdmin));
+    }
+
     public function test_manager_analytics_requires_membership_in_a_workspace_team(): void
     {
         $workspace = $this->workspace('analytics');

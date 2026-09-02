@@ -8,6 +8,7 @@ use App\Models\Workspace;
 use App\Services\AutomationEngine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class TicketMessageController extends Controller
@@ -19,6 +20,9 @@ class TicketMessageController extends Controller
     public function store(Request $request, Workspace $workspace, Ticket $ticket): RedirectResponse
     {
         abort_unless($ticket->workspace_id === $workspace->id, 404);
+
+        $kind = $request->input('kind', 'reply');
+        Gate::authorize($kind === 'note' ? 'addInternalNote' : 'reply', $ticket);
 
         $validated = $request->validate([
             'kind' => ['required', Rule::in(['reply', 'note'])],

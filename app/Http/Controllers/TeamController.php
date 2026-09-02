@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MemberRole;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
@@ -29,6 +30,7 @@ class TeamController extends Controller
                 ->orderBy('name')
                 ->get(),
             'members' => $workspace->members()
+                ->wherePivotIn('role', MemberRole::staffValues())
                 ->orderBy('users.name')
                 ->get(['users.id', 'users.name', 'users.email'])
                 ->map(fn (User $member) => [

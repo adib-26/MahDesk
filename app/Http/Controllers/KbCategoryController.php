@@ -6,12 +6,14 @@ use App\Models\KbCategory;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class KbCategoryController extends Controller
 {
     public function store(Request $request, Workspace $workspace): RedirectResponse
     {
+        Gate::authorize('manageKnowledgeBase', $workspace);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -29,6 +31,7 @@ class KbCategoryController extends Controller
     public function update(Request $request, Workspace $workspace, KbCategory $category): RedirectResponse
     {
         abort_unless($category->workspace_id === $workspace->id, 404);
+        Gate::authorize('manageKnowledgeBase', $workspace);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -43,6 +46,7 @@ class KbCategoryController extends Controller
     public function destroy(Workspace $workspace, KbCategory $category): RedirectResponse
     {
         abort_unless($category->workspace_id === $workspace->id, 404);
+        Gate::authorize('manageKnowledgeBase', $workspace);
 
         $category->delete();
 

@@ -87,6 +87,10 @@ class TeamController extends Controller
         /** @var User $member */
         $member = $workspace->members()->whereKey($validated['member_id'])->firstOrFail();
 
+        if (! $workspace->roleOf($member)?->isStaff()) {
+            return back()->withErrors(['member_id' => 'Customers cannot be added to agent teams.']);
+        }
+
         if ($team->hasMember($member)) {
             return back()->withErrors(['member_id' => 'That workspace member is already on this team.']);
         }

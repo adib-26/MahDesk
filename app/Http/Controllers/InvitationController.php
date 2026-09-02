@@ -36,6 +36,10 @@ class InvitationController extends Controller
             return Inertia::render('invitations/expired');
         }
 
+        if (! Auth::check()) {
+            request()->session()->put('url.intended', route('invitations.show', $token));
+        }
+
         $user = Auth::user();
 
         return Inertia::render('invitations/show', [

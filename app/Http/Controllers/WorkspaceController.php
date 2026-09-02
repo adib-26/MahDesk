@@ -2,67 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\MemberRole;
-use App\Models\SlaPolicy;
 use App\Models\Workspace;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class WorkspaceController extends Controller
 {
-    public function create(): Response
+    public function __construct(private AuditLogger $audit)
     {
-        return Inertia::render('workspaces/create');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function create(): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-        ]);
+        Gate::authorize('create', Workspace::class);
 
-        $workspace = DB::transaction(function () use ($validated, $request) {
-            $workspace = Workspace::create([
-                'name' => $validated['name'],
-                'slug' => $this->uniqueSlug($validated['name']),
-            ]);
+        return redirect()->route('platform.workspaces.index');
+    }
 
-            $workspace->members()->attach($request->user()->id, ['role' => MemberRole::Owner->value]);
+    public function store(): RedirectResponse
+    {
+        Gate::authorize('create', Workspace::class);
 
-            $workspace->teams()->create(['name' => 'General Support'])
-                ->members()
-                ->attach($request->user()->id);
-
-            SlaPolicy::create([
-                'workspace_id' => $workspace->id,
-                'name' => 'Standard support',
-                'description' => 'Default policy applied to every ticket.',
-                'priority' => null,
-                'first_response_minutes' => 8 * 60,
-                'resolution_minutes' => 72 * 60,
-                'is_default' => true,
-            ]);
-
-            SlaPolicy::create([
-                'workspace_id' => $workspace->id,
-                'name' => 'Urgent response',
-                'description' => 'Tight targets for urgent tickets.',
-                'priority' => 'urgent',
-                'first_response_minutes' => 60,
-                'resolution_minutes' => 8 * 60,
-            ]);
-
-            return $workspace;
-        });
-
-        return redirect()
-            ->route('desk.dashboard', $workspace)
-            ->with('success', 'Workspace created. Welcome aboard!');
+        return redirect()->route('platform.workspaces.index');
     }
 
     public function edit(Workspace $workspace): Response
@@ -70,7 +35,8 @@ class WorkspaceController extends Controller
         Gate::authorize('manageWorkspace', $workspace);
 
         return Inertia::render('desk/settings/general', [
-            'isOwner' => $workspace->roleOf(request()->user()) === MemberRole::Owner,
+            'isOwner' => $workspace->roleOf(request()->user())?->isOrganizationAdmin() === true
+                && $workspace->roleOf(request()->user())?->value === 'owner',
         ]);
     }
 
@@ -84,6 +50,8 @@ class WorkspaceController extends Controller
 
         $workspace->update($validated);
 
+        $this->audit->record('workspace.updated', $request->user(), $workspace, $workspace, $validated);
+
         return back()->with('success', 'Workspace updated.');
     }
 
@@ -91,22 +59,17 @@ class WorkspaceController extends Controller
     {
         Gate::authorize('delete', $workspace);
 
+        $name = $workspace->name;
         $workspace->delete();
 
+        $this->audit->record(
+            'workspace.deleted',
+            $request->user(),
+            null,
+            null,
+            ['name' => $name],
+        );
+
         return redirect()->route('dashboard')->with('success', 'Workspace deleted.');
-    }
-
-    private function uniqueSlug(string $name): string
-    {
-        $base = Str::slug($name) ?: 'workspace';
-        $slug = $base;
-        $suffix = 2;
-
-        while (Workspace::where('slug', $slug)->exists()) {
-            $slug = "{$base}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
     }
 }

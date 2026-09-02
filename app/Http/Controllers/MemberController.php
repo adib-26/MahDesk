@@ -5,17 +5,23 @@ namespace App\Http\Controllers;
 use App\Enums\MemberRole;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Auth\Events\Registered;
+use App\Models\WorkspaceInvitation;
+use App\Notifications\WorkspaceInvitationNotification;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MemberController extends Controller
 {
+    public function __construct(private AuditLogger $audit)
+    {
+    }
+
     public function index(Workspace $workspace): Response
     {
         Gate::authorize('manageMembers', $workspace);
@@ -35,12 +41,19 @@ class MemberController extends Controller
                 'name' => $u->name,
                 'email' => $u->email,
                 'role' => $u->pivot->role,
+                'can_view_unassigned' => (bool) $u->pivot->can_view_unassigned,
                 'joined_at' => $u->pivot->created_at?->toDateString(),
                 'open_tickets' => $openCounts->get($u->id, 0),
             ]);
 
+        $invitations = $workspace->invitations()
+            ->pending()
+            ->orderByDesc('created_at')
+            ->get(['id', 'name', 'email', 'role', 'can_view_unassigned', 'expires_at']);
+
         return Inertia::render('desk/settings/members', [
             'members' => $members,
+            'invitations' => $invitations,
         ]);
     }
 
@@ -51,40 +64,37 @@ class MemberController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150'],
-            'role' => ['required', Rule::in([
-                MemberRole::Admin->value,
-                MemberRole::Manager->value,
-                MemberRole::Agent->value,
-            ])],
+            'role' => ['required', Rule::in(MemberRole::inviteableValues())],
+            'can_view_unassigned' => ['sometimes', 'boolean'],
         ]);
 
-        $user = User::firstOrCreate(
-            ['email' => $validated['email']],
-            ['name' => $validated['name'], 'password' => Str::random(40)],
-        );
+        $email = strtolower($validated['email']);
 
-        if ($workspace->members()->where('user_id', $user->id)->exists()) {
+        if ($workspace->members()->whereRaw('lower(users.email) = ?', [$email])->exists()) {
             return back()->withErrors(['email' => 'That person is already a member of this workspace.']);
         }
 
-        $workspace->members()->attach($user->id, ['role' => $validated['role']]);
+        $invitation = WorkspaceInvitation::issue(
+            $workspace,
+            $email,
+            MemberRole::from($validated['role']),
+            $request->user(),
+            $validated['name'],
+            (bool) ($validated['can_view_unassigned'] ?? false),
+        );
 
-        if (in_array($validated['role'], [MemberRole::Manager->value, MemberRole::Agent->value], true)) {
-            $defaultTeam = $workspace->teams()->firstOrCreate(['name' => 'General Support']);
-            $defaultTeam->members()->syncWithoutDetaching([$user->id]);
-        }
+        Notification::route('mail', $invitation->email)
+            ->notify(new WorkspaceInvitationNotification($invitation));
 
-        if ($user->wasRecentlyCreated) {
-            event(new Registered($user));
-        }
+        $this->audit->record(
+            'invitation.sent',
+            $request->user(),
+            $workspace,
+            $invitation,
+            ['email' => $invitation->email, 'role' => $invitation->role],
+        );
 
-        $note = $user->wasRecentlyCreated
-            ? ' An account was created; they can set a password via "Forgot password".'
-            : '';
-
-        $roleLabel = MemberRole::from($validated['role'])->label();
-
-        return back()->with('success', "{$user->name} added as {$roleLabel}.{$note}");
+        return back()->with('success', "Invitation sent to {$invitation->email}.");
     }
 
     public function update(Request $request, Workspace $workspace, User $member): RedirectResponse
@@ -92,11 +102,8 @@ class MemberController extends Controller
         Gate::authorize('manageMembers', $workspace);
 
         $validated = $request->validate([
-            'role' => ['required', Rule::in([
-                MemberRole::Admin->value,
-                MemberRole::Manager->value,
-                MemberRole::Agent->value,
-            ])],
+            'role' => ['required', Rule::in(MemberRole::inviteableValues())],
+            'can_view_unassigned' => ['sometimes', 'boolean'],
         ]);
 
         if ($workspace->roleOf($member) === MemberRole::Owner) {
@@ -107,12 +114,27 @@ class MemberController extends Controller
             return back()->withErrors(['role' => 'You cannot change your own role.']);
         }
 
-        $workspace->members()->updateExistingPivot($member->id, ['role' => $validated['role']]);
+        $canViewUnassigned = MemberRole::from($validated['role']) === MemberRole::Agent
+            ? (bool) ($validated['can_view_unassigned'] ?? false)
+            : false;
+
+        $workspace->members()->updateExistingPivot($member->id, [
+            'role' => $validated['role'],
+            'can_view_unassigned' => $canViewUnassigned,
+        ]);
 
         if (in_array($validated['role'], [MemberRole::Manager->value, MemberRole::Agent->value], true)) {
             $defaultTeam = $workspace->teams()->firstOrCreate(['name' => 'General Support']);
             $defaultTeam->members()->syncWithoutDetaching([$member->id]);
         }
+
+        $this->audit->record(
+            'member.updated',
+            $request->user(),
+            $workspace,
+            $member,
+            ['role' => $validated['role'], 'can_view_unassigned' => $canViewUnassigned],
+        );
 
         return back()->with('success', "{$member->name} is now ".MemberRole::from($validated['role'])->label().'.');
     }
@@ -131,6 +153,14 @@ class MemberController extends Controller
 
         $workspace->members()->detach($member->id);
         $workspace->tickets()->where('assignee_id', $member->id)->update(['assignee_id' => null]);
+
+        $this->audit->record(
+            'member.removed',
+            $request->user(),
+            $workspace,
+            $member,
+            ['email' => $member->email],
+        );
 
         return back()->with('success', "{$member->name} removed from the workspace.");
     }

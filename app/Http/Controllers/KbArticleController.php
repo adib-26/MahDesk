@@ -6,6 +6,7 @@ use App\Models\KbArticle;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -15,6 +16,7 @@ class KbArticleController extends Controller
 {
     public function index(Request $request, Workspace $workspace): Response
     {
+        Gate::authorize('viewKnowledgeBase', $workspace);
         $q = $request->query('q');
 
         $categories = $workspace->kbCategories()
@@ -34,6 +36,7 @@ class KbArticleController extends Controller
 
     public function create(Workspace $workspace): Response
     {
+        Gate::authorize('manageKnowledgeBase', $workspace);
         return Inertia::render('desk/kb/editor', [
             'article' => null,
             'categories' => $workspace->kbCategories()->orderBy('position')->get(['id', 'name']),
@@ -43,6 +46,7 @@ class KbArticleController extends Controller
     public function edit(Workspace $workspace, KbArticle $article): Response
     {
         abort_unless($article->workspace_id === $workspace->id, 404);
+        Gate::authorize('manageKnowledgeBase', $workspace);
 
         return Inertia::render('desk/kb/editor', [
             'article' => $article,
@@ -52,6 +56,7 @@ class KbArticleController extends Controller
 
     public function store(Request $request, Workspace $workspace): RedirectResponse
     {
+        Gate::authorize('manageKnowledgeBase', $workspace);
         $validated = $this->validated($request, $workspace);
 
         $article = $workspace->kbArticles()->create([
@@ -69,6 +74,7 @@ class KbArticleController extends Controller
     public function update(Request $request, Workspace $workspace, KbArticle $article): RedirectResponse
     {
         abort_unless($article->workspace_id === $workspace->id, 404);
+        Gate::authorize('manageKnowledgeBase', $workspace);
 
         $validated = $this->validated($request, $workspace);
 
@@ -86,6 +92,7 @@ class KbArticleController extends Controller
     public function destroy(Workspace $workspace, KbArticle $article): RedirectResponse
     {
         abort_unless($article->workspace_id === $workspace->id, 404);
+        Gate::authorize('manageKnowledgeBase', $workspace);
 
         $article->delete();
 

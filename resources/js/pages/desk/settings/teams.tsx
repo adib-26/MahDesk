@@ -49,7 +49,7 @@ export default function TeamsSettings({ teams, members }: { teams: Team[]; membe
             <Head title="Teams" />
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Teams</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">Teams</h1>
                     <p className="text-muted-foreground text-sm">Group workspace members so managers can work and report within their teams.</p>
                 </div>
 

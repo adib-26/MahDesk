@@ -38,10 +38,11 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
         <AppLayout breadcrumbs={[{ title: 'Tickets', href: deskRoute('desk.tickets.index', workspace) }]}>
             <Head title="Tickets" />
             <div className="flex flex-col gap-4 p-4 md:p-6">
-                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
                     <div>
-                        <h1 className="text-2xl font-semibold">Tickets</h1>
-                        <p className="text-muted-foreground text-sm">Triage, assign, and resolve customer requests.</p>
+                        <p className="stamp-label text-muted-foreground">The queue</p>
+                        <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight">Tickets</h1>
+                        <p className="text-muted-foreground mt-1 text-sm">Triage, assign, and resolve customer requests.</p>
                     </div>
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
@@ -121,16 +122,16 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
                     </Select>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border">
+                <div className="bg-card overflow-hidden rounded-sm border">
                     <table className="w-full text-sm">
-                        <thead className="bg-muted/50 text-muted-foreground text-left text-xs uppercase">
+                        <thead className="bg-muted/60 text-left">
                             <tr>
-                                <th className="px-4 py-3 font-medium">Ticket</th>
-                                <th className="px-4 py-3 font-medium">Customer</th>
-                                <th className="px-4 py-3 font-medium">Status</th>
-                                <th className="px-4 py-3 font-medium">Priority</th>
-                                <th className="px-4 py-3 font-medium">Assignee</th>
-                                <th className="px-4 py-3 font-medium">Updated</th>
+                                <th className="stamp-label text-muted-foreground px-4 py-3 font-medium">Ticket</th>
+                                <th className="stamp-label text-muted-foreground px-4 py-3 font-medium">Customer</th>
+                                <th className="stamp-label text-muted-foreground px-4 py-3 font-medium">Status</th>
+                                <th className="stamp-label text-muted-foreground px-4 py-3 font-medium">Priority</th>
+                                <th className="stamp-label text-muted-foreground px-4 py-3 font-medium">Assignee</th>
+                                <th className="stamp-label text-muted-foreground px-4 py-3 font-medium">Updated</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -145,7 +146,7 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
                                 <tr key={ticket.id} className="hover:bg-muted/40 border-t">
                                     <td className="px-4 py-3">
                                         <Link href={deskRoute('desk.tickets.show', workspace, { ticket: ticket.id })} className="font-medium hover:underline">
-                                            #{ticket.number} {ticket.subject}
+                                            <span className="text-stamp font-mono text-xs">#{ticket.number}</span> {ticket.subject}
                                         </Link>
                                         <div className="mt-1 flex flex-wrap items-center gap-1">
                                             <ChannelBadge channel={ticket.channel} />

@@ -19,6 +19,10 @@ class AnalyticsService
     {
         $since = now()->subDays(29)->startOfDay();
 
+        $totalTickets = Ticket::query()
+            ->visibleTo($user, $workspace)
+            ->count();
+
         $recent = Ticket::query()
             ->visibleTo($user, $workspace)
             ->where(fn ($q) => $q->where('created_at', '>=', $since)->orWhere('resolved_at', '>=', $since))
@@ -30,7 +34,10 @@ class AnalyticsService
         $open = Ticket::query()
             ->visibleTo($user, $workspace)
             ->whereNotIn('status', [TicketStatus::Resolved->value, TicketStatus::Closed->value])
-            ->get(['id', 'status', 'priority', 'channel', 'assignee_id', 'created_at', 'first_response_due_at', 'first_responded_at']);
+            ->get([
+                'id', 'status', 'priority', 'channel', 'assignee_id', 'created_at',
+                'first_responded_at', 'first_response_due_at', 'resolved_at', 'resolution_due_at',
+            ]);
 
         $createdInWindow = $recent->filter(fn ($t) => $t->created_at >= $since);
         $resolvedInWindow = $recent->filter(fn ($t) => $t->resolved_at && $t->resolved_at >= $since);
@@ -44,26 +51,43 @@ class AnalyticsService
             $resolvedInWindow->avg(fn ($t) => $t->created_at->diffInMinutes($t->resolved_at))
         );
 
-        $withSla = $resolvedInWindow->filter(fn ($t) => $t->resolution_due_at);
-        $slaCompliance = $withSla->isEmpty() ? null : round(
-            $withSla->filter(fn ($t) => $t->resolved_at->lessThanOrEqualTo($t->resolution_due_at))->count()
-                / $withSla->count() * 100
-        );
+        $withSla = $open
+            ->merge($recent)
+            ->unique('id')
+            ->filter(fn ($t) => $t->first_response_due_at || $t->resolution_due_at);
+
+        $slaBreaches = $withSla
+            ->filter(fn ($t) => $t->first_response_breached || $t->resolution_breached)
+            ->count();
+
+        $slaCompliance = $withSla->isEmpty()
+            ? null
+            : (int) round(($withSla->count() - $slaBreaches) / $withSla->count() * 100);
 
         return [
             'kpis' => [
+                'totalTickets' => $totalTickets,
                 'open' => $open->count(),
+                'resolvedTickets' => $resolvedInWindow->count(),
+                'slaBreaches' => $slaBreaches,
                 'unassigned' => $open->whereNull('assignee_id')->count(),
                 'breachingSoon' => $open->filter(function ($t) {
+                    $minutesUntilDue = $t->first_response_due_at
+                        ? now()->diffInMinutes($t->first_response_due_at, false)
+                        : null;
+
                     return $t->first_response_due_at
                         && ! $t->first_responded_at
-                        && now()->diffInMinutes($t->first_response_due_at, false) < 120;
+                        && $minutesUntilDue >= 0
+                        && $minutesUntilDue <= 120;
                 })->count(),
                 'createdToday' => $createdInWindow->filter(fn ($t) => $t->created_at->isToday())->count(),
                 'resolvedThisWeek' => $resolvedInWindow->filter(fn ($t) => $t->resolved_at->greaterThanOrEqualTo(now()->startOfWeek()))->count(),
                 'avgFirstResponseMinutes' => $avgFirstResponseMinutes,
                 'avgResolutionMinutes' => $avgResolutionMinutes,
                 'slaCompliance' => $slaCompliance,
+                'customerSatisfaction' => null,
+                'csatResponses' => 0,
             ],
             'series' => $this->dailySeries($createdInWindow, $resolvedInWindow, $since),
             'byStatus' => $this->countBy($open, fn ($t) => $t->status->value),

@@ -25,7 +25,7 @@ export default function WorkspaceGeneral({ isOwner }: { isOwner: boolean }) {
             <Head title="Workspace settings" />
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 md:p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Workspace settings</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">Workspace settings</h1>
                     <p className="text-muted-foreground text-sm">Manage the workspace name, agents, SLAs, and automations.</p>
                 </div>
                 <SettingsNav />

@@ -57,7 +57,7 @@ export function AppSidebar() {
             <SidebarContent>
                 {(workspaces.length > 0 || isSuperAdmin) && (
                     <SidebarGroup className="px-2 py-0">
-                        <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
+                        <SidebarGroupLabel className="stamp-label text-[9px]">Ledgers</SidebarGroupLabel>
                         <SidebarMenu>
                             {workspaces.map((item) => (
                                 <SidebarMenuItem key={item.id}>

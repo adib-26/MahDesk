@@ -39,7 +39,7 @@ export default function KnowledgeBaseIndex({ categories, filters }: Props) {
             <div className="flex flex-col gap-4 p-4 md:p-6">
                 <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                     <div>
-                        <h1 className="text-2xl font-semibold">Knowledge base</h1>
+                        <h1 className="font-display text-3xl font-semibold tracking-tight">Knowledge base</h1>
                         <p className="text-muted-foreground text-sm">Write help articles and publish them to your public help center.</p>
                     </div>
                     <div className="flex gap-2">

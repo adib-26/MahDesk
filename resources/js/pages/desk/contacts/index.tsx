@@ -39,7 +39,7 @@ export default function ContactsIndex({ contacts, filters }: Props) {
             <div className="flex flex-col gap-4 p-4 md:p-6">
                 <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                     <div>
-                        <h1 className="text-2xl font-semibold">Customers</h1>
+                        <h1 className="font-display text-3xl font-semibold tracking-tight">Customers</h1>
                         <p className="text-muted-foreground text-sm">People who have reached your workspace.</p>
                     </div>
                     <Dialog open={open} onOpenChange={setOpen}>

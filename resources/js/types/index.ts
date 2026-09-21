@@ -159,7 +159,10 @@ export interface KbArticle {
 
 export interface Analytics {
     kpis: {
+        totalTickets: number;
         open: number;
+        resolvedTickets: number;
+        slaBreaches: number;
         unassigned: number;
         breachingSoon: number;
         createdToday: number;
@@ -167,6 +170,8 @@ export interface Analytics {
         avgFirstResponseMinutes: number | null;
         avgResolutionMinutes: number | null;
         slaCompliance: number | null;
+        customerSatisfaction: number | null;
+        csatResponses: number;
     };
     series: { date: string; created: number; resolved: number }[];
     byStatus: { name: string; count: number }[];

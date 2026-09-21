@@ -19,7 +19,7 @@ export default function CreateWorkspace() {
             <Head title="Create workspace" />
             <div className="mx-auto flex w-full max-w-xl flex-col gap-6 p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Create a workspace</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">Create a workspace</h1>
                     <p className="text-muted-foreground mt-1 text-sm">
                         Each company gets its own Desk workspace — tickets, customers, agents, and knowledge stay isolated.
                     </p>

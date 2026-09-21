@@ -37,7 +37,7 @@ export default function SlaSettings({ policies }: { policies: SlaPolicy[] }) {
             <Head title="SLA policies" />
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">SLA policies</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">SLA policies</h1>
                     <p className="text-muted-foreground text-sm">Priority-specific targets win over the default policy.</p>
                 </div>
                 <SettingsNav />

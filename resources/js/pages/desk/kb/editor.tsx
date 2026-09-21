@@ -45,7 +45,7 @@ export default function KnowledgeBaseEditor({ article, categories }: Props) {
             <Head title={article ? `Edit ${article.title}` : 'New article'} />
             <form onSubmit={submit} className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 md:p-6">
                 <div className="flex items-center justify-between gap-3">
-                    <h1 className="text-2xl font-semibold">{article ? 'Edit article' : 'New article'}</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">{article ? 'Edit article' : 'New article'}</h1>
                     {article && (
                         <Button
                             type="button"

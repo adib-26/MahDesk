@@ -56,7 +56,7 @@ export default function AutomationsSettings({ rules, agents }: { rules: Automati
             <Head title="Automations" />
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Automations</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">Automations</h1>
                     <p className="text-muted-foreground text-sm">When a ticket is created or updated, matching rules run in order.</p>
                 </div>
                 <SettingsNav />

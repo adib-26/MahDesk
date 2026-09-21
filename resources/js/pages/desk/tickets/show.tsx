@@ -55,8 +55,8 @@ export default function TicketShow({ ticket, agents, workspaceTags, contactTicke
                                 <span className="text-sm font-medium text-red-600">SLA breached</span>
                             )}
                         </div>
-                        <h1 className="text-2xl font-semibold">
-                            #{ticket.number} {ticket.subject}
+                        <h1 className="font-display text-3xl font-semibold tracking-tight">
+                            <span className="text-stamp font-mono text-xl font-medium">#{ticket.number}</span> {ticket.subject}
                         </h1>
                     </div>
 
@@ -65,9 +65,9 @@ export default function TicketShow({ ticket, agents, workspaceTags, contactTicke
                             <div
                                 key={message.id}
                                 className={cn(
-                                    'rounded-xl border p-4',
-                                    message.kind === 'note' && 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30',
-                                    message.kind === 'event' && 'text-muted-foreground border-dashed text-sm',
+                                    'bg-card rounded-sm border p-4',
+                                    message.kind === 'note' && 'border-amber-800/30 bg-amber-50 dark:border-amber-300/25 dark:bg-amber-950/30',
+                                    message.kind === 'event' && 'text-muted-foreground border-dashed font-mono text-xs',
                                 )}
                             >
                                 <div className="mb-2 flex items-center justify-between gap-3 text-xs">

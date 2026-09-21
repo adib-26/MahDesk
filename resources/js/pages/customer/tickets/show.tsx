@@ -1,3 +1,4 @@
+import AppLogoIcon from '@/components/app-logo-icon';
 import { PriorityBadge, StatusBadge } from '@/components/desk-badges';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -44,8 +45,11 @@ export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket 
 
             <header className="border-b">
                 <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5 sm:px-6">
-                    <Link href={route('customer.tickets.index')} className="text-lg font-semibold">
-                        OmniDesk Support
+                    <Link href={route('customer.tickets.index')} className="flex items-center gap-2.5">
+                        <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-sm">
+                            <AppLogoIcon className="size-4.5" />
+                        </span>
+                        <span className="font-display text-lg font-semibold tracking-tight">OmniDesk Support</span>
                     </Link>
                     <span className="text-muted-foreground text-sm">{ticket.workspace.name}</span>
                 </div>
@@ -61,8 +65,8 @@ export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket 
                         <StatusBadge status={ticket.status} />
                         <PriorityBadge priority={ticket.priority} />
                     </div>
-                    <h1 className="text-2xl font-semibold">
-                        #{ticket.number} {ticket.subject}
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">
+                        <span className="text-stamp font-mono text-xl font-medium">#{ticket.number}</span> {ticket.subject}
                     </h1>
                     <p className="text-muted-foreground text-sm">
                         Opened {relativeTime(ticket.created_at)} · Updated {relativeTime(ticket.updated_at)}
@@ -70,17 +74,17 @@ export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket 
                 </section>
 
                 <section className="space-y-3">
-                    <h2 className="text-base font-semibold">Conversation</h2>
+                    <h2 className="font-display text-lg font-semibold tracking-tight">Conversation</h2>
                     {ticket.messages.length === 0 ? (
-                        <p className="text-muted-foreground rounded-xl border p-4 text-sm">There are no replies yet.</p>
+                        <p className="text-muted-foreground rounded-sm border border-dashed p-4 text-sm">There are no replies yet.</p>
                     ) : (
                         ticket.messages.map((message) => (
                             <article
                                 key={message.id}
                                 className={
                                     message.is_from_contact
-                                        ? 'bg-muted/40 ml-auto max-w-[90%] rounded-xl border p-4'
-                                        : 'mr-auto max-w-[90%] rounded-xl border p-4'
+                                        ? 'bg-muted/40 ml-auto max-w-[90%] rounded-sm border p-4'
+                                        : 'bg-card mr-auto max-w-[90%] rounded-sm border p-4'
                                 }
                             >
                                 <div className="text-muted-foreground mb-2 flex items-center justify-between gap-4 text-xs">
@@ -93,9 +97,9 @@ export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket 
                     )}
                 </section>
 
-                <section className="space-y-4 rounded-xl border p-4 sm:p-6">
+                <section className="bg-card space-y-4 rounded-sm border p-4 sm:p-6">
                     <div>
-                        <h2 className="font-semibold">Reply to support</h2>
+                        <h2 className="font-display text-lg font-semibold tracking-tight">Reply to support</h2>
                         <p className="text-muted-foreground mt-1 text-sm">Your message will be shared with the support team.</p>
                     </div>
 

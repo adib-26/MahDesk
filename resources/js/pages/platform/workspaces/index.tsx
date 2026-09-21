@@ -35,7 +35,7 @@ export default function PlatformWorkspaces({ workspaces }: { workspaces: Platfor
             <Head title="Organizations" />
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Organizations</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">Organizations</h1>
                     <p className="text-muted-foreground text-sm">Create tenants and invite their organization owners. Super admins stay outside workspace membership.</p>
                 </div>
 

@@ -1,3 +1,4 @@
+import AppLogoIcon from '@/components/app-logo-icon';
 import { PriorityBadge, StatusBadge } from '@/components/desk-badges';
 import { Button } from '@/components/ui/button';
 import { relativeTime } from '@/lib/desk';
@@ -26,8 +27,11 @@ export default function CustomerTicketsIndex({ ticketGroups }: { ticketGroups: T
 
             <header className="border-b">
                 <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
-                    <Link href={route('customer.tickets.index')} className="text-lg font-semibold">
-                        OmniDesk Support
+                    <Link href={route('customer.tickets.index')} className="flex items-center gap-2.5">
+                        <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-sm">
+                            <AppLogoIcon className="size-4.5" />
+                        </span>
+                        <span className="font-display text-lg font-semibold tracking-tight">OmniDesk Support</span>
                     </Link>
                     <div className="flex items-center gap-3">
                         <span className="text-muted-foreground text-sm">My tickets</span>
@@ -40,17 +44,20 @@ export default function CustomerTicketsIndex({ ticketGroups }: { ticketGroups: T
 
             <main className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Your support tickets</h1>
+                    <p className="stamp-label text-muted-foreground">Your ledger</p>
+                    <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight">Your support tickets</h1>
                     <p className="text-muted-foreground mt-1 text-sm">Follow conversations and reply to your support requests.</p>
                 </div>
 
                 {ticketGroups.length === 0 ? (
-                    <div className="text-muted-foreground rounded-xl border p-8 text-center text-sm">You do not have any support tickets yet.</div>
+                    <div className="text-muted-foreground rounded-sm border border-dashed p-8 text-center text-sm">
+                        You do not have any support tickets yet.
+                    </div>
                 ) : (
                     ticketGroups.map((group) => (
                         <section key={group.id} className="space-y-3">
-                            <h2 className="text-base font-semibold">{group.name}</h2>
-                            <div className="overflow-hidden rounded-xl border">
+                            <h2 className="font-display text-lg font-semibold tracking-tight">{group.name}</h2>
+                            <div className="bg-card overflow-hidden rounded-sm border">
                                 {group.tickets.map((ticket) => (
                                     <Link
                                         key={ticket.id}
@@ -59,7 +66,7 @@ export default function CustomerTicketsIndex({ ticketGroups }: { ticketGroups: T
                                     >
                                         <div className="min-w-0">
                                             <p className="truncate font-medium">
-                                                #{ticket.number} {ticket.subject}
+                                                <span className="text-stamp font-mono text-xs">#{ticket.number}</span> {ticket.subject}
                                             </p>
                                             <p className="text-muted-foreground mt-1 text-sm">Updated {relativeTime(ticket.updated_at)}</p>
                                         </div>

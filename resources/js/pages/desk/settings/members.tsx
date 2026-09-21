@@ -46,7 +46,7 @@ export default function MembersSettings({ members, invitations = [] }: { members
             <Head title="Agents" />
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
                 <div>
-                    <h1 className="text-2xl font-semibold">Agents</h1>
+                    <h1 className="font-display text-3xl font-semibold tracking-tight">Agents</h1>
                     <p className="text-muted-foreground text-sm">Invite organization admins, managers, and agents. Customers register themselves.</p>
                 </div>
                 <SettingsNav />

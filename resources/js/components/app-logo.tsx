@@ -7,12 +7,16 @@ export default function AppLogo() {
 
     return (
         <>
-            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
-                <AppLogoIcon className="size-5 fill-current text-white dark:text-black" />
+            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-sm">
+                <AppLogoIcon className="size-5" />
             </div>
-            <div className="ml-1 grid flex-1 text-left text-sm">
-                <span className="mb-0.5 truncate leading-none font-semibold">{currentWorkspace?.name ?? 'Desk'}</span>
-                <span className="text-muted-foreground truncate text-xs">{currentWorkspace ? 'Workspace' : 'Customer support'}</span>
+            <div className="ml-1 grid flex-1 text-left">
+                <span className="font-display truncate text-base leading-tight font-semibold tracking-tight">
+                    {currentWorkspace?.name ?? 'MahbubDesk'}
+                </span>
+                <span className="stamp-label text-muted-foreground truncate text-[9px]">
+                    {currentWorkspace ? 'Workspace' : 'Support ledger'}
+                </span>
             </div>
         </>
     );

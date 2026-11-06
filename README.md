@@ -4,6 +4,21 @@ A multi-workspace customer support desk. Agents work tickets, customers use a po
 
 The interface is a Laravel 12 and Inertia React app. Data stays in SQLite for local development. Outgoing mail is captured by [Mailpit](https://mailpit.axllent.org/). Inbound support mail can be pulled from the free [testmail.app](https://testmail.app) inbox.
 
+## Preview
+
+The desk uses a dark ledger theme: paper, ink, and a ticket-stub mark. Light mode is available from the header.
+
+| | |
+| --- | --- |
+| Welcome | Sign in |
+| <img src="docs/preview/welcome.png" alt="MahbubDesk welcome page" width="420"> | <img src="docs/preview/login.png" alt="Sign-in form with a 30-day remember-me option" width="420"> |
+| Analytics | Ticket queue |
+| <img src="docs/preview/dashboard.png" alt="Northwind Support analytics dashboard" width="420"> | <img src="docs/preview/tickets.png" alt="Ticket queue with status filters and tags" width="420"> |
+
+A ticket keeps the conversation, a public reply, and an internal note on one page.
+
+<img src="docs/preview/ticket.png" alt="Ticket conversation for request number 5" width="720">
+
 ## What you can do
 
 - Run more than one workspace, with roles for owner, organization admin, manager, agent, and customer.

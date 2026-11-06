@@ -42,7 +42,7 @@ class DashboardTest extends TestCase
         $this->actingAs($agent)
             ->get('/w/acme')
             ->assertOk()
-            ->assertSee('desk/dashboard', false);
+            ->assertInertia(fn ($page) => $page->component('desk/dashboard'));
     }
 
     public function test_a_manager_without_a_team_still_opens_analytics(): void
@@ -54,7 +54,7 @@ class DashboardTest extends TestCase
         $this->actingAs($manager)
             ->get('/w/acme-manager')
             ->assertOk()
-            ->assertSee('desk/dashboard', false);
+            ->assertInertia(fn ($page) => $page->component('desk/dashboard'));
     }
 
     public function test_super_admins_are_sent_to_the_platform_console()

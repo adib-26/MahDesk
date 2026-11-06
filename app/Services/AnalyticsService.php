@@ -27,7 +27,7 @@ class AnalyticsService
             ->visibleTo($user, $workspace)
             ->where(fn ($q) => $q->where('created_at', '>=', $since)->orWhere('resolved_at', '>=', $since))
             ->get([
-                'id', 'status', 'priority', 'channel', 'assignee_id', 'created_at',
+                'id', 'status', 'priority', 'channel', 'category', 'assignee_id', 'created_at',
                 'first_responded_at', 'first_response_due_at', 'resolved_at', 'resolution_due_at',
             ]);
 
@@ -92,8 +92,10 @@ class AnalyticsService
             'series' => $this->dailySeries($createdInWindow, $resolvedInWindow, $since),
             'byStatus' => $this->countBy($open, fn ($t) => $t->status->value),
             'byPriority' => $this->countBy($open, fn ($t) => $t->priority->value),
+            'byPriorityInPeriod' => $this->countBy($createdInWindow, fn ($t) => $t->priority->value),
             'byChannel' => $this->countBy($createdInWindow, fn ($t) => $t->channel->value),
-            'agents' => $this->agentLeaderboard($workspace, $user, $open, $resolvedInWindow),
+            'byCategory' => $this->countBy($createdInWindow, fn ($t) => $t->category->value),
+            'agents' => $this->agentLeaderboard($workspace, $user, $open, $createdInWindow, $resolvedInWindow),
         ];
     }
 
@@ -125,7 +127,7 @@ class AnalyticsService
             ->all();
     }
 
-    private function agentLeaderboard(Workspace $workspace, User $user, $open, $resolvedInWindow): array
+    private function agentLeaderboard(Workspace $workspace, User $user, $open, $createdInWindow, $resolvedInWindow): array
     {
         $members = $workspace->members()->wherePivotIn('role', MemberRole::staffValues())->get();
 
@@ -140,18 +142,44 @@ class AnalyticsService
             $members = $members->whereIn('id', $teamMemberIds)->values();
         }
 
-        return $members->map(function ($member) use ($open, $resolvedInWindow) {
+        return $members->map(function ($member) use ($open, $createdInWindow, $resolvedInWindow) {
+            // "Assigned" is current queue workload, so it intentionally excludes
+            // terminal tickets. Other activity metrics share the 30-day window.
+            $assigned = $open->where('assignee_id', $member->id);
             $resolved = $resolvedInWindow->where('assignee_id', $member->id);
+            // Ticket messages do not record which agent made the first response.
+            // Attribute the response to the ticket's current assignee instead.
+            $responded = $createdInWindow
+                ->where('assignee_id', $member->id)
+                ->filter(fn ($t) => $t->first_responded_at);
+            $withResolutionSla = $resolved->filter(fn ($t) => $t->resolution_due_at);
+            $resolutionSlaBreaches = $withResolutionSla
+                ->filter(fn ($t) => $t->resolved_at->greaterThan($t->resolution_due_at))
+                ->count();
 
             return [
                 'id' => $member->id,
                 'name' => $member->name,
                 'role' => $member->pivot->role,
-                'openTickets' => $open->where('assignee_id', $member->id)->count(),
+                // Kept as a compatibility alias for the existing dashboard.
+                'openTickets' => $assigned->count(),
+                'ticketsAssigned' => $assigned->count(),
                 'resolvedLast30Days' => $resolved->count(),
+                'ticketsResolved' => $resolved->count(),
+                'avgResponseMinutes' => $responded->isEmpty() ? null : round(
+                    $responded->avg(fn ($t) => $t->created_at->diffInMinutes($t->first_responded_at))
+                ),
                 'avgResolutionMinutes' => $resolved->isEmpty() ? null : round(
                     $resolved->avg(fn ($t) => $t->created_at->diffInMinutes($t->resolved_at))
                 ),
+                // This intentionally measures only resolution targets on tickets
+                // resolved in the reporting period, not first-response SLAs.
+                'slaCompliance' => $withResolutionSla->isEmpty()
+                    ? null
+                    : (int) round(($withResolutionSla->count() - $resolutionSlaBreaches) / $withResolutionSla->count() * 100),
+                // The schema has no ticket/customer-rating relation yet.
+                'customerRating' => null,
+                'customerRatingResponses' => 0,
             ];
         })->sortByDesc('resolvedLast30Days')->values()->all();
     }

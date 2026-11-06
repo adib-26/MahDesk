@@ -2,7 +2,9 @@
 
 namespace App\Policies;
 
+use App\Authorization\RolePermissions;
 use App\Enums\MemberRole;
+use App\Enums\Permission;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -40,25 +42,25 @@ class WorkspacePolicy
     public function update(User $user, Workspace $workspace): bool
     {
         return $this->isPlatformSuperAdmin($user)
-            || $workspace->roleOf($user)?->canManageWorkspace() === true;
+            || RolePermissions::allows($workspace->roleOf($user), Permission::ManageWorkspace);
     }
 
     public function delete(User $user, Workspace $workspace): bool
     {
         return $this->isPlatformSuperAdmin($user)
-            || $workspace->roleOf($user) === MemberRole::Owner;
+            || RolePermissions::allows($workspace->roleOf($user), Permission::DeleteWorkspace);
     }
 
     public function manageMembers(User $user, Workspace $workspace): bool
     {
         return $this->isPlatformSuperAdmin($user)
-            || $workspace->roleOf($user)?->canManageMembers() === true;
+            || RolePermissions::allows($workspace->roleOf($user), Permission::ManageMembers);
     }
 
     public function manageTeams(User $user, Workspace $workspace): bool
     {
         return $this->isPlatformSuperAdmin($user)
-            || $workspace->roleOf($user)?->canManageTeams() === true;
+            || RolePermissions::allows($workspace->roleOf($user), Permission::ManageTeams);
     }
 
     public function viewAnalytics(User $user, Workspace $workspace): bool
@@ -69,10 +71,11 @@ class WorkspacePolicy
 
         $role = $workspace->roleOf($user);
 
-        if (! $role?->canViewAnalytics()) {
+        if (! RolePermissions::allows($role, Permission::ViewAnalytics)) {
             return false;
         }
 
+        // Reports are team-scoped for managers, so a manager without a team has nothing to see.
         return $role !== MemberRole::Manager || $workspace->teamsFor($user)->exists();
     }
 

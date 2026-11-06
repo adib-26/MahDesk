@@ -35,4 +35,32 @@ return [
         ],
     ],
 
+    /*
+    | Email-to-ticket. "testmail" polls a testmail.app namespace; each
+    | workspace receives mail at {namespace}.{slug}@inbox.testmail.app.
+    | "postmark" receives webhooks at {slug}@{domain}; that endpoint is
+    | rejected unless the secret is configured and supplied by the provider.
+    */
+    'inbound_email' => [
+        'driver' => env('INBOUND_EMAIL_DRIVER', 'postmark'),
+        'domain' => env('INBOUND_EMAIL_DOMAIN', 'inbound.mahbubdesk.test'),
+        'secret' => env('INBOUND_EMAIL_SECRET'),
+        'max_payload_bytes' => (int) env('INBOUND_EMAIL_MAX_PAYLOAD_BYTES', 5 * 1024 * 1024),
+        'max_recipients' => (int) env('INBOUND_EMAIL_MAX_RECIPIENTS', 50),
+    ],
+
+    // REST API: requests per minute per access token.
+    'api' => [
+        'rate_limit' => (int) env('API_RATE_LIMIT', 120),
+    ],
+
+    'testmail' => [
+        'api_key' => env('TESTMAIL_API_KEY'),
+        'namespace' => env('TESTMAIL_NAMESPACE'),
+        'domain' => 'inbox.testmail.app',
+        'endpoint' => env('TESTMAIL_ENDPOINT', 'https://api.testmail.app/api/graphql'),
+        // On the very first poll, only import mail received this many minutes ago or later.
+        'initial_lookback_minutes' => (int) env('TESTMAIL_INITIAL_LOOKBACK_MINUTES', 60),
+    ],
+
 ];

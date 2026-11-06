@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Authorization\RolePermissions;
 use App\Enums\MemberRole;
+use App\Enums\Permission;
+use App\Enums\TicketCategory;
 use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -17,8 +20,13 @@ class Ticket extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::deleting(fn (Ticket $ticket) => \App\Services\TicketAttachmentService::purgeFilesForTickets([$ticket->id]));
+    }
+
     protected $fillable = [
-        'workspace_id', 'number', 'subject', 'status', 'priority', 'channel',
+        'workspace_id', 'number', 'subject', 'status', 'priority', 'channel', 'category',
         'contact_id', 'team_id', 'assignee_id', 'sla_policy_id',
         'first_response_due_at', 'resolution_due_at',
         'first_responded_at', 'resolved_at', 'closed_at',
@@ -32,6 +40,7 @@ class Ticket extends Model
             'status' => TicketStatus::class,
             'priority' => TicketPriority::class,
             'channel' => TicketChannel::class,
+            'category' => TicketCategory::class,
             'first_response_due_at' => 'datetime',
             'resolution_due_at' => 'datetime',
             'first_responded_at' => 'datetime',
@@ -73,6 +82,11 @@ class Ticket extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'ticket_tag');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TicketAttachment::class);
     }
 
     public function isAssignedTo(User|int $user): bool
@@ -120,6 +134,10 @@ class Ticket extends Model
         }
 
         $role = $workspace->roleOf($user);
+
+        if (RolePermissions::allows($role, Permission::ViewAllTickets)) {
+            return $query;
+        }
 
         return match ($role) {
             MemberRole::Owner, MemberRole::Admin => $query,
@@ -173,6 +191,26 @@ class Ticket extends Model
         }
 
         return ($this->resolved_at ?? now())->greaterThan($this->resolution_due_at);
+    }
+
+    /**
+     * Token placed in outbound email subjects so customer replies can be
+     * matched back to this ticket, e.g. "[#42]".
+     */
+    public function emailReference(): string
+    {
+        return "[#{$this->number}]";
+    }
+
+    public function emailSubject(): string
+    {
+        return "{$this->emailReference()} {$this->subject}";
+    }
+
+    /** Extract a ticket number from a subject such as "Re: [#42] Login issue". */
+    public static function numberFromEmailSubject(?string $subject): ?int
+    {
+        return preg_match('/\[#(\d{1,9})\]/', (string) $subject, $match) ? (int) $match[1] : null;
     }
 
     public function transitionStatus(TicketStatus $new, ?int $actorId = null): void

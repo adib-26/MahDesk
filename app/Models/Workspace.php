@@ -13,7 +13,92 @@ class Workspace extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug'];
+    protected static function booted(): void
+    {
+        // Tickets are removed by a database cascade, which skips Ticket model events.
+        static::deleting(fn (Workspace $workspace) => \App\Services\TicketAttachmentService::purgeFilesForTickets(
+            $workspace->tickets()->select('id'),
+        ));
+    }
+
+    protected $fillable = ['name', 'slug', 'support_email'];
+
+    /**
+     * Address the email provider delivers to for this workspace. Companies
+     * forward their own support address here.
+     */
+    public function inboundEmailAddress(): string
+    {
+        return self::inboundAddressFor($this->slug);
+    }
+
+    /**
+     * testmail.app: {namespace}.{slug}@inbox.testmail.app (the slug is the
+     * testmail.app "tag"). Postmark/other: {slug}@INBOUND_EMAIL_DOMAIN.
+     */
+    public static function inboundAddressFor(string $slug): string
+    {
+        if (config('services.inbound_email.driver') === 'testmail') {
+            return config('services.testmail.namespace').'.'.$slug.'@'.config('services.testmail.domain');
+        }
+
+        return $slug.'@'.config('services.inbound_email.domain');
+    }
+
+    /** Inverse of inboundAddressFor(); ignores a "+suffix" on the local part. */
+    public static function slugFromInboundAddress(string $address): ?string
+    {
+        [$local, $host] = array_pad(explode('@', Str::lower(trim($address)), 2), 2, '');
+        $local = Str::before($local, '+');
+
+        if (config('services.inbound_email.driver') === 'testmail') {
+            $prefix = Str::lower((string) config('services.testmail.namespace')).'.';
+
+            return $host === Str::lower((string) config('services.testmail.domain')) && $prefix !== '.' && str_starts_with($local, $prefix)
+                ? (Str::after($local, $prefix) ?: null)
+                : null;
+        }
+
+        return $host === Str::lower((string) config('services.inbound_email.domain')) && $local !== '' ? $local : null;
+    }
+
+    /** Address customers should reply to. */
+    public function replyToAddress(): string
+    {
+        return $this->support_email ?: $this->inboundEmailAddress();
+    }
+
+    /**
+     * Resolve the workspace an email was sent to from its recipient list.
+     * Matches the routing address or a configured support_email.
+     *
+     * @param  list<string>  $recipients
+     */
+    public static function forInboundRecipients(array $recipients): ?self
+    {
+        $slugs = [];
+        $addresses = [];
+
+        foreach ($recipients as $recipient) {
+            $address = Str::lower(trim($recipient));
+            $addresses[] = $address;
+
+            if ($slug = self::slugFromInboundAddress($address)) {
+                $slugs[] = $slug;
+            }
+        }
+
+        if ($slugs !== []) {
+            $workspace = self::query()->whereIn('slug', $slugs)->first();
+            if ($workspace) {
+                return $workspace;
+            }
+        }
+
+        return $addresses === []
+            ? null
+            : self::query()->whereIn('support_email', $addresses)->first();
+    }
 
     public function members(): BelongsToMany
     {

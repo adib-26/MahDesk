@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\TicketPriority;
 use App\Models\SlaPolicy;
+use App\Enums\Permission;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class SlaPolicyController extends Controller
 {
     public function index(Workspace $workspace): Response
     {
-        Gate::authorize('manageWorkspace', $workspace);
+        Gate::authorize(Permission::ManageSla->value, $workspace);
 
         return Inertia::render('desk/settings/sla', [
             'policies' => $workspace->slaPolicies()->orderByDesc('is_default')->orderBy('name')->get(),
@@ -25,7 +26,7 @@ class SlaPolicyController extends Controller
 
     public function store(Request $request, Workspace $workspace): RedirectResponse
     {
-        Gate::authorize('manageWorkspace', $workspace);
+        Gate::authorize(Permission::ManageSla->value, $workspace);
 
         $validated = $this->validated($request);
 
@@ -38,7 +39,7 @@ class SlaPolicyController extends Controller
 
     public function update(Request $request, Workspace $workspace, SlaPolicy $slaPolicy): RedirectResponse
     {
-        Gate::authorize('manageWorkspace', $workspace);
+        Gate::authorize(Permission::ManageSla->value, $workspace);
         abort_unless($slaPolicy->workspace_id === $workspace->id, 404);
 
         $validated = $this->validated($request);
@@ -52,7 +53,7 @@ class SlaPolicyController extends Controller
 
     public function destroy(Workspace $workspace, SlaPolicy $slaPolicy): RedirectResponse
     {
-        Gate::authorize('manageWorkspace', $workspace);
+        Gate::authorize(Permission::ManageSla->value, $workspace);
         abort_unless($slaPolicy->workspace_id === $workspace->id, 404);
 
         $slaPolicy->delete();

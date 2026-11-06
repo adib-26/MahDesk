@@ -100,6 +100,8 @@ class MemberController extends Controller
     public function update(Request $request, Workspace $workspace, User $member): RedirectResponse
     {
         Gate::authorize('manageMembers', $workspace);
+        // {member} is a plain user id; make sure it belongs to this workspace.
+        abort_unless($workspace->hasMember($member), 404);
 
         $validated = $request->validate([
             'role' => ['required', Rule::in(MemberRole::inviteableValues())],
@@ -142,6 +144,8 @@ class MemberController extends Controller
     public function destroy(Request $request, Workspace $workspace, User $member): RedirectResponse
     {
         Gate::authorize('manageMembers', $workspace);
+        // {member} is a plain user id; make sure it belongs to this workspace.
+        abort_unless($workspace->hasMember($member), 404);
 
         if ($workspace->roleOf($member) === MemberRole::Owner) {
             return back()->withErrors(['role' => 'The workspace owner cannot be removed.']);

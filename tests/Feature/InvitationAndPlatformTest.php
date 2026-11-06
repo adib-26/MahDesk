@@ -56,8 +56,8 @@ class InvitationAndPlatformTest extends TestCase
 
         $this->post("/invitations/{$invitation->token}", [
             'name' => 'Priya Shah',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'correct-horse-battery',
+            'password_confirmation' => 'correct-horse-battery',
         ])->assertRedirect();
 
         $this->assertAuthenticated();

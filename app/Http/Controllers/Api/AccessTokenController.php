@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Auth\PasswordVerifier;
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Http\Requests\Api\V1\IssueTokenRequest;
 use App\Services\AuditLogger;
 use App\Services\TwoFactorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AccessTokenController extends Controller
 {
     public function __construct(
         private TwoFactorService $twoFactor,
         private AuditLogger $audit,
+        private PasswordVerifier $passwords,
     ) {
     }
 
@@ -24,21 +25,13 @@ class AccessTokenController extends Controller
      * Exchange verified credentials (and a second factor, when enabled) for a
      * short-lived Sanctum personal access token.
      */
-    public function store(Request $request): JsonResponse
+    public function store(IssueTokenRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
-            'device_name' => ['required', 'string', 'max:100'],
-            'two_factor_code' => ['nullable', 'string', 'regex:/^\d{6}$/'],
-            'recovery_code' => ['nullable', 'string', 'max:64'],
-        ]);
+        $validated = $request->validated();
 
-        $user = User::query()
-            ->where('email', Str::lower($validated['email']))
-            ->first();
+        $user = $this->passwords->verify($validated['email'], $validated['password']);
 
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+        if ($user === null) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.failed')],
             ]);
@@ -90,8 +83,13 @@ class AccessTokenController extends Controller
      */
     public function destroy(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()?->delete();
+        $token = $request->user()->currentAccessToken();
 
-        return response()->json(status: 204);
+        // Cookie-authenticated (SPA) requests carry a transient token with nothing to revoke.
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        return response()->json(null, 204);
     }
 }

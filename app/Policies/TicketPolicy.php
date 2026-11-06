@@ -2,7 +2,9 @@
 
 namespace App\Policies;
 
+use App\Authorization\RolePermissions;
 use App\Enums\MemberRole;
+use App\Enums\Permission;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
@@ -51,8 +53,12 @@ class TicketPolicy
 
         $role = $workspace->roleOf($user);
 
-        return $role?->isOrganizationAdmin() === true
-            || ($role === MemberRole::Manager && $workspace->teamsFor($user)->exists());
+        if (! RolePermissions::allows($role, Permission::CreateTickets)) {
+            return false;
+        }
+
+        // Without workspace-wide access, tickets can only be created for one's own teams.
+        return RolePermissions::allows($role, Permission::ViewAllTickets) || $workspace->teamsFor($user)->exists();
     }
 
     public function update(User $user, Ticket $ticket): bool
@@ -63,7 +69,7 @@ class TicketPolicy
 
         $role = $ticket->workspace->roleOf($user);
 
-        return $role !== MemberRole::Customer && $this->canAccessTicket($user, $ticket, $role);
+        return RolePermissions::allows($role, Permission::AccessDesk) && $this->canAccessTicket($user, $ticket, $role);
     }
 
     /**
@@ -73,7 +79,7 @@ class TicketPolicy
     public function delete(User $user, Ticket $ticket): bool
     {
         return $this->isPlatformSuperAdmin($user)
-            || $ticket->workspace->roleOf($user)?->isOrganizationAdmin() === true;
+            || RolePermissions::allows($ticket->workspace->roleOf($user), Permission::DeleteTickets);
     }
 
     public function reply(User $user, Ticket $ticket): bool
@@ -89,7 +95,7 @@ class TicketPolicy
 
         $role = $ticket->workspace->roleOf($user);
 
-        return $role !== MemberRole::Customer && $this->canAccessTicket($user, $ticket, $role);
+        return RolePermissions::allows($role, Permission::ViewInternalNotes) && $this->canAccessTicket($user, $ticket, $role);
     }
 
     public function addInternalNote(User $user, Ticket $ticket): bool
@@ -109,8 +115,12 @@ class TicketPolicy
 
         $role = $ticket->workspace->roleOf($user);
 
-        return $role?->isOrganizationAdmin() === true
-            || ($role === MemberRole::Manager && $ticket->isInTeamOf($user));
+        if (! RolePermissions::allows($role, Permission::AssignTickets)) {
+            return false;
+        }
+
+        // Without workspace-wide access, assignment is limited to tickets in one's own teams.
+        return RolePermissions::allows($role, Permission::ViewAllTickets) || $ticket->isInTeamOf($user);
     }
 
     /**
@@ -125,6 +135,11 @@ class TicketPolicy
     {
         $role ??= $ticket->workspace->roleOf($user);
 
+        if (RolePermissions::allows($role, Permission::ViewAllTickets)) {
+            return true;
+        }
+
+        // Everyone else is limited to their slice of the workspace.
         return match ($role) {
             MemberRole::Owner, MemberRole::Admin => true,
             MemberRole::Manager => $ticket->isInTeamOf($user),

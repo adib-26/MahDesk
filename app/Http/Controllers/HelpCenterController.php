@@ -17,9 +17,7 @@ class HelpCenterController extends Controller
             ->orderBy('position')
             ->with(['articles' => fn ($query) => $query
                 ->where('status', 'published')
-                ->when($q, fn ($query, $search) => $query->where(fn ($w) => $w
-                    ->where('title', 'like', "%{$search}%")
-                    ->orWhere('body', 'like', "%{$search}%")))
+                ->whereContains(['title', 'body'], $q)
                 ->orderByDesc('views')
                 ->select(['id', 'kb_category_id', 'title', 'slug', 'excerpt', 'views', 'updated_at'])])
             ->get()

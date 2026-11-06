@@ -19,7 +19,7 @@ class TagController extends Controller
                 'required', 'string', 'max:40',
                 Rule::unique('tags', 'name')->where('workspace_id', $workspace->id),
             ],
-            'color' => ['nullable', 'string', 'max:20'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
         $workspace->tags()->create([

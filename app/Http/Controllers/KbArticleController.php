@@ -23,7 +23,7 @@ class KbArticleController extends Controller
             ->orderBy('position')
             ->orderBy('name')
             ->with(['articles' => fn ($query) => $query
-                ->when($q, fn ($query, $search) => $query->where('title', 'like', "%{$search}%"))
+                ->whereContains('title', $q)
                 ->orderByDesc('updated_at')
                 ->select(['id', 'kb_category_id', 'title', 'slug', 'excerpt', 'status', 'views', 'updated_at'])])
             ->get();

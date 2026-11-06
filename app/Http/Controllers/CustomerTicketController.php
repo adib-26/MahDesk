@@ -3,16 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Models\TicketAttachment;
 use App\Models\User;
+use App\Models\Workspace;
+use App\Services\TicketAttachmentService;
+use App\Services\TicketService;
+use App\Support\AttachmentLimits;
+use App\Support\AttachmentRules;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CustomerTicketController extends Controller
 {
+    public function __construct(
+        private TicketAttachmentService $attachments,
+        private TicketService $tickets,
+    ) {}
+
     /**
      * List the authenticated customer's tickets, grouped by workspace.
      */
@@ -43,7 +56,46 @@ class CustomerTicketController extends Controller
 
         return Inertia::render('customer/tickets/index', [
             'ticketGroups' => $ticketGroups,
+            'workspaces' => $this->customerWorkspaces($user)->get()->map(fn (Workspace $workspace) => [
+                'id' => $workspace->id,
+                'name' => $workspace->name,
+            ])->values(),
         ]);
+    }
+
+    /**
+     * Create a ticket for the authenticated customer's workspace.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $validated = $request->validate([
+            'workspace_id' => ['required', 'integer'],
+            'subject' => ['required', 'string', 'max:200'],
+            'body' => ['required', 'string', 'max:10000'],
+        ]);
+
+        $workspace = $this->customerWorkspaces($user)->findOrFail($validated['workspace_id']);
+        $contact = $workspace->contacts()
+            ->where(function (Builder $query) use ($user) {
+                $query->where('user_id', $user->getKey())
+                    ->orWhereRaw('LOWER(email) = ?', [strtolower($user->email)]);
+            })
+            ->firstOrFail();
+
+        $ticket = $this->tickets->create($workspace, $user, [
+            'subject' => $validated['subject'],
+            'body' => $validated['body'],
+            'priority' => 'normal',
+            'channel' => 'web',
+            'category' => 'general',
+            'contact_id' => $contact->id,
+        ]);
+
+        return redirect()
+            ->route('customer.tickets.show', $ticket)
+            ->with('success', "Ticket #{$ticket->number} created.");
     }
 
     /**
@@ -58,10 +110,12 @@ class CustomerTicketController extends Controller
             'messages' => fn ($query) => $query
                 ->where('kind', 'reply')
                 ->orderBy('created_at')
+                ->with('attachments:id,uuid,ticket_message_id,original_name,mime_type,size')
                 ->select(['id', 'ticket_id', 'is_from_contact', 'body', 'created_at']),
         ]);
 
         return Inertia::render('customer/tickets/show', [
+            'attachmentLimits' => AttachmentLimits::forClient(),
             'ticket' => [
                 ...$this->ticketSummary($ticket),
                 'created_at' => $ticket->created_at?->toIso8601String(),
@@ -73,6 +127,13 @@ class CustomerTicketController extends Controller
                     'body' => $message->body,
                     'is_from_contact' => $message->is_from_contact,
                     'created_at' => $message->created_at?->toIso8601String(),
+                    'attachments' => $message->attachments->map(fn (TicketAttachment $file) => [
+                        'id' => $file->uuid,
+                        'name' => $file->original_name,
+                        'size' => $file->size,
+                        'mime_type' => $file->mime_type,
+                        'url' => route('customer.tickets.attachments.show', [$ticket->id, $file->uuid]),
+                    ])->values(),
                 ])->values(),
             ],
         ]);
@@ -81,20 +142,27 @@ class CustomerTicketController extends Controller
     /**
      * Add a public customer reply without accepting staff-only message fields.
      */
-    public function store(Request $request, Ticket $ticket): RedirectResponse
+    public function storeReply(Request $request, Ticket $ticket): RedirectResponse
     {
         Gate::authorize('reply', $ticket);
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'body' => ['required', 'string', 'max:10000'],
-        ]);
+            ...AttachmentRules::rules(),
+        ], AttachmentRules::messages());
+        $validator->after(fn ($v) => AttachmentRules::checkTotalSize($v, $request->file('attachments')));
+        $validated = $validator->validate();
 
-        $ticket->messages()->create([
-            'author_id' => $request->user()->getKey(),
-            'kind' => 'reply',
-            'is_from_contact' => true,
-            'body' => $validated['body'],
-        ]);
+        DB::transaction(function () use ($ticket, $request, $validated) {
+            $message = $ticket->messages()->create([
+                'author_id' => $request->user()->getKey(),
+                'kind' => 'reply',
+                'is_from_contact' => true,
+                'body' => $validated['body'],
+            ]);
+
+            $this->attachments->store($message, $validated['attachments'] ?? [], $request->user());
+        });
 
         return back()->with('success', 'Reply sent.');
     }
@@ -112,5 +180,15 @@ class CustomerTicketController extends Controller
             'priority' => $ticket->priority->value,
             'updated_at' => $ticket->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function customerWorkspaces(User $user): Builder
+    {
+        return Workspace::query()
+            ->whereHas('contacts', function (Builder $query) use ($user) {
+                $query->where('user_id', $user->getKey())
+                    ->orWhereRaw('LOWER(email) = ?', [strtolower($user->email)]);
+            })
+            ->orderBy('name');
     }
 }

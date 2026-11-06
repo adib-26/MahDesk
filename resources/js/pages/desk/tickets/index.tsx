@@ -8,15 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { CHANNEL_LABELS, deskRoute, PRIORITY_LABELS, relativeTime, STATUS_LABELS } from '@/lib/desk';
-import type { Contact, Paginated, SharedData, Tag, Ticket, TicketChannel, TicketPriority, TicketStatus } from '@/types';
+import { CATEGORY_LABELS, CHANNEL_LABELS, deskRoute, PRIORITY_LABELS, relativeTime, STATUS_LABELS } from '@/lib/desk';
+import type { Contact, Paginated, SharedData, Tag, Ticket, TicketCategory, TicketChannel, TicketPriority, TicketStatus } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 interface Props {
     tickets: Paginated<Ticket>;
-    filters: { status: string; priority?: string; assignee?: string; tag?: string; q?: string };
+    filters: { status: string; priority?: string; category?: string; assignee?: string; tag?: string; q?: string; view?: string };
     statusCounts: Record<string, number>;
     agents: { id: number; name: string }[];
     tags: Tag[];
@@ -31,7 +31,17 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
     const [open, setOpen] = useState(false);
 
     const apply = (next: Partial<Props['filters']>) => {
-        router.get(deskRoute('desk.tickets.index', workspace), { ...filters, ...next }, { preserveState: true, replace: true });
+        router.get(
+            deskRoute('desk.tickets.index', workspace),
+            { ...filters, ...next, ...(next.status ? { view: undefined } : {}) },
+            { preserveState: true, replace: true },
+        );
+    };
+
+    const viewLabel: Record<string, string> = {
+        active: 'Open queue',
+        resolved: 'Resolved in the last 30 days',
+        breached: 'Missed an SLA target',
     };
 
     return (
@@ -60,6 +70,17 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
                     </Dialog>
                 </div>
 
+                {filters.view && viewLabel[filters.view] && (
+                    <div className="flex items-center justify-between gap-3 rounded-sm border px-3 py-2 text-sm">
+                        <p>
+                            Showing <span className="font-medium">{viewLabel[filters.view]}</span>
+                        </p>
+                        <Button size="sm" variant="outline" onClick={() => apply({ view: undefined })}>
+                            Clear
+                        </Button>
+                    </div>
+                )}
+
                 <div className="flex flex-wrap gap-2">
                     {statuses.map((status) => {
                         const count = status === 'all' ? Object.values(statusCounts).reduce((sum, value) => sum + Number(value), 0) : Number(statusCounts[status] ?? 0);
@@ -71,7 +92,7 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
                     })}
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-4">
+                <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
                     <Input placeholder="Search subject, #, or customer" defaultValue={filters.q} onKeyDown={(event) => event.key === 'Enter' && apply({ q: event.currentTarget.value })} />
                     <Select value={filters.priority ?? 'any'} onValueChange={(value) => apply({ priority: value === 'any' ? undefined : value })}>
                         <SelectTrigger>
@@ -81,6 +102,21 @@ export default function TicketsIndex({ tickets, filters, statusCounts, agents, t
                             <SelectGroup>
                                 <SelectItem value="any">Any priority</SelectItem>
                                 {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    <Select value={filters.category ?? 'any'} onValueChange={(value) => apply({ category: value === 'any' ? undefined : value })}>
+                        <SelectTrigger aria-label="Category">
+                            <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectItem value="any">Any category</SelectItem>
+                                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                                     <SelectItem key={value} value={value}>
                                         {label}
                                     </SelectItem>
@@ -197,6 +233,7 @@ function CreateTicketForm({
         body: '',
         priority: 'normal' as TicketPriority,
         channel: 'web' as TicketChannel,
+        category: 'general' as TicketCategory,
         assignee_id: '',
         contact_id: '',
         contact_name: '',
@@ -265,6 +302,24 @@ function CreateTicketForm({
                         </SelectContent>
                     </Select>
                 </div>
+            </div>
+            <div className="grid gap-2">
+                <Label>Category</Label>
+                <Select value={form.data.category} onValueChange={(value) => form.setData('category', value as TicketCategory)}>
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                    {label}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
+                <InputError message={form.errors.category} />
             </div>
             <div className="grid gap-2">
                 <Label>Existing customer</Label>

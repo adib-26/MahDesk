@@ -1,4 +1,5 @@
 import AppLogoIcon from '@/components/app-logo-icon';
+import { AttachmentList, AttachmentPicker, attachmentError, type AttachmentItem, type AttachmentLimits } from '@/components/attachments';
 import { PriorityBadge, StatusBadge } from '@/components/desk-badges';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ interface CustomerMessage {
     body: string;
     is_from_contact: boolean;
     created_at: string | null;
+    attachments: AttachmentItem[];
 }
 
 interface CustomerTicket {
@@ -27,8 +29,8 @@ interface CustomerTicket {
     messages: CustomerMessage[];
 }
 
-export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket }) {
-    const reply = useForm({ body: '' });
+export default function CustomerTicketShow({ ticket, attachmentLimits }: { ticket: CustomerTicket; attachmentLimits: AttachmentLimits }) {
+    const reply = useForm<{ body: string; attachments: File[] }>({ body: '', attachments: [] });
 
     const submitReply: FormEventHandler = (event) => {
         event.preventDefault();
@@ -92,6 +94,7 @@ export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket 
                                     <span>{relativeTime(message.created_at)}</span>
                                 </div>
                                 <p className="text-sm whitespace-pre-wrap">{message.body}</p>
+                                <AttachmentList attachments={message.attachments} />
                             </article>
                         ))
                     )}
@@ -111,6 +114,12 @@ export default function CustomerTicketShow({ ticket }: { ticket: CustomerTicket 
                             required
                         />
                         <InputError message={reply.errors.body} />
+                        <AttachmentPicker
+                            files={reply.data.attachments}
+                            onChange={(files) => reply.setData('attachments', files)}
+                            limits={attachmentLimits}
+                            error={attachmentError(reply.errors as Record<string, string>)}
+                        />
                         <Button type="submit" disabled={reply.processing}>
                             Send reply
                         </Button>

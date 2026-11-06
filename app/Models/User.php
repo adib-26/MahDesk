@@ -9,12 +9,33 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        // A new password must lock out anyone holding the old one: revoke all
+        // API tokens and "remember me" cookies. Other browser sessions are
+        // signed out by the AuthenticateSession middleware, which notices the
+        // changed hash. Hash upgrades at sign-in use saveQuietly(), so they
+        // don't trigger this.
+        static::updated(function (User $user) {
+            if (! $user->wasChanged('password')) {
+                return;
+            }
+
+            $user->tokens()->delete();
+
+            if (! $user->wasChanged('remember_token')) {
+                $user->forceFill(['remember_token' => Str::random(60)])->saveQuietly();
+            }
+        });
+    }
 
     public function workspaces(): BelongsToMany
     {
@@ -26,6 +47,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function staffWorkspaces(): BelongsToMany
     {
         return $this->workspaces()->wherePivotIn('role', MemberRole::staffValues());
+    }
+
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'team_members')->withTimestamps();
     }
 
     public function assignedTickets(): HasMany

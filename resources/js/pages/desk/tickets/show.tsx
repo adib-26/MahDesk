@@ -1,3 +1,4 @@
+import { AttachmentList, AttachmentPicker, attachmentError, type AttachmentItem, type AttachmentLimits } from '@/components/attachments';
 import { ChannelBadge, PriorityBadge, StatusBadge, TagChip } from '@/components/desk-badges';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { CHANNEL_LABELS, deskRoute, formatMinutes, PRIORITY_LABELS, relativeTime, STATUS_LABELS } from '@/lib/desk';
+import { CATEGORY_LABELS, CHANNEL_LABELS, deskRoute, formatMinutes, PRIORITY_LABELS, relativeTime, STATUS_LABELS } from '@/lib/desk';
 import { cn } from '@/lib/utils';
-import type { SharedData, Tag, Ticket, TicketPriority, TicketStatus } from '@/types';
+import type { SharedData, Tag, Ticket, TicketCategory, TicketPriority, TicketStatus } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
@@ -17,22 +18,29 @@ interface Props {
     agents: { id: number; name: string }[];
     workspaceTags: Tag[];
     contactTicketCount: number;
+    attachmentLimits: AttachmentLimits;
 }
 
-export default function TicketShow({ ticket, agents, workspaceTags, contactTicketCount }: Props) {
+export default function TicketShow({ ticket, agents, workspaceTags, contactTicketCount, attachmentLimits }: Props) {
     const { currentWorkspace } = usePage<SharedData>().props;
     const workspace = currentWorkspace!;
+    const category = ticket.category ?? 'general';
 
     const update = (payload: Record<string, unknown>) => {
         router.patch(deskRoute('desk.tickets.update', workspace, { ticket: ticket.id }), payload, { preserveScroll: true });
     };
 
-    const reply = useForm({ kind: 'reply' as 'reply' | 'note', body: '', status: '' });
+    const reply = useForm<{ kind: 'reply' | 'note'; body: string; status: string; attachments: File[] }>({
+        kind: 'reply',
+        body: '',
+        status: '',
+        attachments: [],
+    });
     const submitReply: FormEventHandler = (event) => {
         event.preventDefault();
         reply.post(deskRoute('desk.tickets.messages.store', workspace, { ticket: ticket.id }), {
             preserveScroll: true,
-            onSuccess: () => reply.reset('body'),
+            onSuccess: () => reply.reset('body', 'attachments'),
         });
     };
 
@@ -82,6 +90,17 @@ export default function TicketShow({ ticket, agents, workspaceTags, contactTicke
                                     <span>{relativeTime(message.created_at)}</span>
                                 </div>
                                 <p className="whitespace-pre-wrap text-sm">{message.body}</p>
+                                <AttachmentList
+                                    attachments={message.attachments?.map(
+                                        (file): AttachmentItem => ({
+                                            id: file.uuid,
+                                            name: file.original_name,
+                                            size: file.size,
+                                            mime_type: file.mime_type,
+                                            url: deskRoute('desk.tickets.attachments.show', workspace, { ticket: ticket.id, attachment: file.uuid }),
+                                        }),
+                                    )}
+                                />
                             </div>
                         ))}
                     </div>
@@ -107,6 +126,12 @@ export default function TicketShow({ ticket, agents, workspaceTags, contactTicke
                                     required
                                 />
                                 <InputError message={reply.errors.body} />
+                                <AttachmentPicker
+                                    files={reply.data.attachments}
+                                    onChange={(files) => reply.setData('attachments', files)}
+                                    limits={attachmentLimits}
+                                    error={attachmentError(reply.errors as Record<string, string>)}
+                                />
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                                     <div className="grid flex-1 gap-2">
                                         <Label>Also set status</Label>
@@ -165,6 +190,22 @@ export default function TicketShow({ ticket, agents, workspaceTags, contactTicke
                                     <SelectContent>
                                         <SelectGroup>
                                             {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                                                <SelectItem key={value} value={value}>
+                                                    {label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                            <Field label="Category">
+                                <Select value={category} onValueChange={(value) => update({ category: value as TicketCategory })}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                                                 <SelectItem key={value} value={value}>
                                                     {label}
                                                 </SelectItem>

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\MailText;
 use App\Models\WorkspaceInvitation;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -27,8 +28,8 @@ class WorkspaceInvitationNotification extends Notification
 
         return (new MailMessage)
             ->subject("You're invited to {$workspace->name}")
-            ->greeting('Hello'.($this->invitation->name ? " {$this->invitation->name}" : '').',')
-            ->line("You have been invited to join {$workspace->name} as {$role}.")
+            ->greeting('Hello'.($this->invitation->name ? ' '.MailText::escape($this->invitation->name) : '').',')
+            ->line('You have been invited to join '.MailText::escape($workspace->name)." as {$role}.")
             ->action('Accept invitation', route('invitations.show', $this->invitation->token))
             ->line('This invitation expires in 7 days. If you were not expecting it, you can ignore this email.');
     }

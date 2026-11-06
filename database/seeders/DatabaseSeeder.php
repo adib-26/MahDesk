@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\MemberRole;
+use App\Enums\TicketCategory;
 use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -75,9 +76,13 @@ class DatabaseSeeder extends Seeder
     private function workspace(string $name, string $slug, array $members): Workspace
     {
         $workspace = Workspace::create(['name' => $name, 'slug' => $slug]);
+        $generalTeam = $workspace->teams()->create(['name' => 'General Support']);
 
         foreach ($members as $userId => $role) {
             $workspace->members()->attach($userId, ['role' => $role->value]);
+            if ($role->isStaff()) {
+                $generalTeam->members()->syncWithoutDetaching([$userId]);
+            }
         }
 
         SlaPolicy::create([
@@ -103,6 +108,9 @@ class DatabaseSeeder extends Seeder
 
     private function seedNorthwind(Workspace $workspace, User $owner, User $admin, User $agent): void
     {
+        $technicalTeam = $workspace->teams()->firstOrCreate(['name' => 'Technical Team']);
+        $technicalTeam->members()->syncWithoutDetaching([$admin->id, $agent->id]);
+
         $tags = collect([
             ['billing', '#f97316'],
             ['bug', '#ef4444'],
@@ -111,6 +119,37 @@ class DatabaseSeeder extends Seeder
             ['shipping', '#0ea5e9'],
         ])->mapWithKeys(fn ($tag) => [
             $tag[0] => Tag::create(['workspace_id' => $workspace->id, 'name' => $tag[0], 'color' => $tag[1]]),
+        ]);
+
+        AutomationRule::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Route high-priority technical tickets',
+            'event' => 'ticket_created',
+            'conditions' => [
+                ['field' => 'priority', 'operator' => 'equals', 'value' => 'high'],
+                ['field' => 'category', 'operator' => 'equals', 'value' => 'technical'],
+            ],
+            'actions' => [
+                ['type' => 'assign_team', 'value' => (string) $technicalTeam->id],
+                ['type' => 'send_notification', 'value' => 'assigned_team'],
+                ['type' => 'set_sla_hours', 'value' => '2'],
+            ],
+            'is_active' => true,
+            'position' => 1,
+        ]);
+
+        AutomationRule::create([
+            'workspace_id' => $workspace->id,
+            'name' => 'Escalate tickets unresolved for 4 hours',
+            'event' => 'ticket_escalation',
+            'conditions' => [
+                ['field' => 'unresolved_hours', 'operator' => 'greater_than_or_equal', 'value' => '4'],
+            ],
+            'actions' => [
+                ['type' => 'escalate_to_manager', 'value' => 'auto'],
+            ],
+            'is_active' => true,
+            'position' => 2,
         ]);
 
         AutomationRule::create([
@@ -126,7 +165,7 @@ class DatabaseSeeder extends Seeder
                 ['type' => 'add_note', 'value' => 'Urgent ticket auto-assigned to the on-call owner.'],
             ],
             'is_active' => true,
-            'position' => 1,
+            'position' => 3,
         ]);
 
         AutomationRule::create([
@@ -141,7 +180,7 @@ class DatabaseSeeder extends Seeder
                 ['type' => 'set_priority', 'value' => 'high'],
             ],
             'is_active' => true,
-            'position' => 2,
+            'position' => 4,
         ]);
 
         $gettingStarted = KbCategory::create([
@@ -174,14 +213,14 @@ class DatabaseSeeder extends Seeder
         ];
 
         $scenarios = [
-            ['Cannot reset password', TicketPriority::High, TicketStatus::Open, TicketChannel::Email, $contacts[0], $agent, ['how-to'], 18, false],
-            ['Invoice #441 is missing tax', TicketPriority::Urgent, TicketStatus::Pending, TicketChannel::Email, $contacts[1], $owner, ['billing', 'vip'], 6, false],
-            ['Package stuck in transit', TicketPriority::Normal, TicketStatus::Open, TicketChannel::Chat, $contacts[2], $admin, ['shipping'], 30, false],
-            ['App crashes on checkout', TicketPriority::High, TicketStatus::OnHold, TicketChannel::Web, $contacts[3], $agent, ['bug'], 40, false],
-            ['How do I add a second admin?', TicketPriority::Low, TicketStatus::Resolved, TicketChannel::Web, $contacts[4], $admin, ['how-to'], 5, true],
-            ['Refund for damaged shipment', TicketPriority::Normal, TicketStatus::Resolved, TicketChannel::Phone, $contacts[0], $agent, ['shipping', 'billing'], 12, true],
-            ['SSO login loop', TicketPriority::Urgent, TicketStatus::Closed, TicketChannel::Email, $contacts[1], $owner, ['bug', 'vip'], 20, true],
-            ['Need CSV export of tickets', TicketPriority::Low, TicketStatus::Open, TicketChannel::Web, $contacts[2], null, ['how-to'], 2, false],
+            ['Cannot reset password', TicketPriority::High, TicketStatus::Open, TicketChannel::Email, $contacts[0], $agent, ['how-to'], 18, false, TicketCategory::Account],
+            ['Invoice #441 is missing tax', TicketPriority::Urgent, TicketStatus::Pending, TicketChannel::Email, $contacts[1], $owner, ['billing', 'vip'], 6, false, TicketCategory::Billing],
+            ['Package stuck in transit', TicketPriority::Normal, TicketStatus::Open, TicketChannel::Chat, $contacts[2], $admin, ['shipping'], 30, false, TicketCategory::Shipping],
+            ['App crashes on checkout', TicketPriority::High, TicketStatus::OnHold, TicketChannel::Web, $contacts[3], $agent, ['bug'], 40, false, TicketCategory::Technical],
+            ['How do I add a second admin?', TicketPriority::Low, TicketStatus::Resolved, TicketChannel::Web, $contacts[4], $admin, ['how-to'], 5, true, TicketCategory::Account],
+            ['Refund for damaged shipment', TicketPriority::Normal, TicketStatus::Resolved, TicketChannel::Phone, $contacts[0], $agent, ['shipping', 'billing'], 12, true, TicketCategory::Billing],
+            ['SSO login loop', TicketPriority::Urgent, TicketStatus::Closed, TicketChannel::Email, $contacts[1], $owner, ['bug', 'vip'], 20, true, TicketCategory::Technical],
+            ['Need CSV export of tickets', TicketPriority::Low, TicketStatus::Open, TicketChannel::Web, $contacts[2], null, ['how-to'], 2, false, TicketCategory::FeatureRequest],
         ];
 
         foreach ($scenarios as $index => $scenario) {
@@ -217,6 +256,7 @@ class DatabaseSeeder extends Seeder
             [],
             8,
             false,
+            TicketCategory::Technical,
         ], collect());
     }
 
@@ -237,11 +277,11 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * @param  array{0:string,1:TicketPriority,2:TicketStatus,3:TicketChannel,4:Contact,5:?User,6:list<string>,7:int,8:bool}  $scenario
+     * @param  array{0:string,1:TicketPriority,2:TicketStatus,3:TicketChannel,4:Contact,5:?User,6:list<string>,7:int,8:bool,9:TicketCategory}  $scenario
      */
     private function ticket(Workspace $workspace, int $number, array $scenario, $tags): void
     {
-        [$subject, $priority, $status, $channel, $contact, $assignee, $tagNames, $hoursAgo, $resolved] = $scenario;
+        [$subject, $priority, $status, $channel, $contact, $assignee, $tagNames, $hoursAgo, $resolved, $category] = $scenario;
 
         $created = now()->subHours($hoursAgo);
         $ticket = Ticket::create([
@@ -251,6 +291,7 @@ class DatabaseSeeder extends Seeder
             'status' => $status,
             'priority' => $priority,
             'channel' => $channel,
+            'category' => $category,
             'contact_id' => $contact->id,
             'assignee_id' => $assignee?->id,
         ]);

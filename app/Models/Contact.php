@@ -12,6 +12,14 @@ class Contact extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        // Tickets are removed by a database cascade, which skips Ticket model events.
+        static::deleting(fn (Contact $contact) => \App\Services\TicketAttachmentService::purgeFilesForTickets(
+            $contact->tickets()->select('id'),
+        ));
+    }
+
     protected $fillable = ['workspace_id', 'user_id', 'name', 'email', 'phone', 'company', 'notes'];
 
     public function workspace(): BelongsTo

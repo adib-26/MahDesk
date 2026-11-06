@@ -89,6 +89,54 @@ class CustomerTicketPortalTest extends TestCase
             ->assertJsonMissing(['contact_id' => $contact->id]);
     }
 
+    public function test_customer_can_create_a_ticket_for_their_workspace(): void
+    {
+        $customer = User::factory()->create();
+        [$workspace, $contact] = $this->customerWorkspace($customer, 'Acme Support');
+        $workspace->teams()->create(['name' => 'General Support']);
+
+        $response = $this
+            ->actingAs($customer)
+            ->post('/customer/tickets', [
+                'workspace_id' => $workspace->id,
+                'subject' => 'Cannot access billing',
+                'body' => 'The billing page is showing an error.',
+            ]);
+
+        $ticket = Ticket::query()->latest('id')->first();
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('customer.tickets.show', $ticket));
+
+        $this->assertSame($contact->id, $ticket->contact_id);
+        $this->assertSame('Cannot access billing', $ticket->subject);
+        $this->assertDatabaseHas('ticket_messages', [
+            'ticket_id' => $ticket->id,
+            'body' => 'The billing page is showing an error.',
+            'is_from_contact' => true,
+        ]);
+    }
+
+    public function test_customer_cannot_create_a_ticket_for_another_workspace(): void
+    {
+        $customer = User::factory()->create();
+        $otherCustomer = User::factory()->create();
+        [$workspace] = $this->customerWorkspace($customer, 'Acme Support');
+        [$otherWorkspace] = $this->customerWorkspace($otherCustomer, 'Other Support');
+
+        $response = $this
+            ->actingAs($customer)
+            ->post('/customer/tickets', [
+                'workspace_id' => $otherWorkspace->id,
+                'subject' => 'Not allowed',
+                'body' => 'This should not be created.',
+            ]);
+
+        $response->assertNotFound();
+        $this->assertDatabaseMissing('tickets', ['subject' => 'Not allowed']);
+    }
+
     public function test_customer_cannot_view_another_customers_ticket(): void
     {
         $owner = User::factory()->create();

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Enums\MemberRole;
+use App\Enums\TicketCategory;
 use App\Enums\TicketStatus;
 use App\Models\Contact;
 use App\Models\Ticket;
@@ -29,6 +30,8 @@ class AnalyticsServiceTest extends TestCase
 
         $this->ticket($workspace, $contact, 1, [
             'status' => TicketStatus::Resolved,
+            'category' => TicketCategory::Billing,
+            'assignee_id' => $owner->id,
             'created_at' => now()->subDays(2),
             'first_response_due_at' => now()->subDays(2)->addHour(),
             'first_responded_at' => now()->subDays(2)->addMinutes(20),
@@ -38,6 +41,7 @@ class AnalyticsServiceTest extends TestCase
 
         $this->ticket($workspace, $contact, 2, [
             'status' => TicketStatus::Open,
+            'assignee_id' => $owner->id,
             'created_at' => now()->subDays(3),
             'first_response_due_at' => now()->subDays(3)->addHour(),
             'first_responded_at' => now()->subDays(3)->addMinutes(20),
@@ -47,8 +51,25 @@ class AnalyticsServiceTest extends TestCase
 
         $analytics = app(AnalyticsService::class)->forWorkspace($workspace, $owner);
 
+        $this->assertSame(2, $analytics['kpis']['totalTickets']);
+        $this->assertSame(1, $analytics['kpis']['resolvedTickets']);
         $this->assertSame(1, $analytics['kpis']['slaBreaches']);
         $this->assertSame(50, $analytics['kpis']['slaCompliance']);
+        $this->assertNull($analytics['kpis']['customerSatisfaction']);
+        $this->assertSame(0, $analytics['kpis']['csatResponses']);
+        $categories = collect($analytics['byCategory'])->pluck('count', 'name');
+        $this->assertSame(1, $categories->get('billing'));
+        // Tickets created without a category fall back to the column default.
+        $this->assertSame(1, $categories->get('general'));
+        $this->assertSame([['name' => 'normal', 'count' => 2]], $analytics['byPriorityInPeriod']);
+
+        $agent = $analytics['agents'][0];
+        $this->assertSame(1, $agent['ticketsAssigned']);
+        $this->assertSame(1, $agent['ticketsResolved']);
+        $this->assertEquals(20, $agent['avgResponseMinutes']);
+        $this->assertSame(100, $agent['slaCompliance']);
+        $this->assertNull($agent['customerRating']);
+        $this->assertSame(0, $agent['customerRatingResponses']);
     }
 
     /**

@@ -169,7 +169,9 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Defaults to HTTPS-only in production so session (and XSRF-TOKEN) cookies
+    // are never sent over plain HTTP. Override with SESSION_SECURE_COOKIE.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

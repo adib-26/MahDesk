@@ -35,6 +35,7 @@ export interface SharedData {
     workspaces: WorkspaceSummary[];
     currentWorkspace?: WorkspaceSummary | null;
     memberRole?: string | null;
+    permissions?: string[];
     flash?: { success?: string | null; error?: string | null };
     [key: string]: unknown;
 }
@@ -60,9 +61,23 @@ export interface Paginated<T> {
     links: { url: string | null; label: string; active: boolean }[];
 }
 
+export interface InboundEmail {
+    id: number;
+    from: string;
+    subject: string;
+    body: string;
+    html: string;
+    status: string;
+    status_reason: string | null;
+    provider: string;
+    created_at: string | null;
+    ticket: { id: number; number: number } | null;
+}
+
 export type TicketStatus = 'open' | 'pending' | 'on_hold' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type TicketChannel = 'email' | 'web' | 'chat' | 'phone';
+export type TicketCategory = 'general' | 'billing' | 'technical' | 'account' | 'shipping' | 'feature_request';
 
 export interface Tag {
     id: number;
@@ -87,6 +102,7 @@ export interface Ticket {
     status: TicketStatus;
     priority: TicketPriority;
     channel: TicketChannel;
+    category: TicketCategory;
     contact_id: number;
     assignee_id: number | null;
     sla_policy_id: number | null;
@@ -113,6 +129,7 @@ export interface TicketMessage {
     body: string;
     created_at: string;
     author?: { id: number; name: string } | null;
+    attachments?: { id: number; uuid: string; original_name: string; mime_type: string; size: number }[];
 }
 
 export interface SlaPolicy {
@@ -128,11 +145,24 @@ export interface SlaPolicy {
 export interface AutomationRule {
     id: number;
     name: string;
-    event: 'ticket_created' | 'ticket_updated';
+    event: 'ticket_created' | 'ticket_updated' | 'ticket_escalation';
     conditions: { field: string; operator: string; value: string }[];
     actions: { type: string; value: string }[];
     is_active: boolean;
     position: number;
+    runs_count?: number;
+    runs_max_created_at?: string | null;
+}
+
+export interface AutomationRuleRun {
+    id: number;
+    rule_name: string | null;
+    event: AutomationRule['event'];
+    actions: string[];
+    ticket_id: number | null;
+    ticket_number: number | null;
+    ticket_subject: string | null;
+    created_at: string | null;
 }
 
 export interface KbCategory {
@@ -175,12 +205,29 @@ export interface Analytics {
     };
     series: { date: string; created: number; resolved: number }[];
     byStatus: { name: string; count: number }[];
+    /** Current open queue, retained separately from the reporting-period mix. */
     byPriority: { name: string; count: number }[];
+    /** Tickets created in the same 30-day reporting period as `series`. */
+    byPriorityInPeriod: { name: string; count: number }[];
     byChannel: { name: string; count: number }[];
+    /** Tickets created in the reporting period, grouped by their category column. */
+    byCategory: { name: TicketCategory; count: number }[];
     agents: {
         id: number;
         name: string;
         role: string;
+        /** Current non-terminal tickets assigned to this agent. */
+        ticketsAssigned: number;
+        /** Resolved in the 30-day reporting window. */
+        ticketsResolved: number;
+        /** First responses on tickets attributed to the current assignee. */
+        avgResponseMinutes: number | null;
+        /** Resolution-SLA compliance for tickets resolved in the reporting window. */
+        slaCompliance: number | null;
+        /** No ratings are stored yet, so these are null and zero respectively. */
+        customerRating: number | null;
+        customerRatingResponses: number;
+        /** Legacy fields retained for existing dashboard consumers. */
         openTickets: number;
         resolvedLast30Days: number;
         avgResolutionMinutes: number | null;

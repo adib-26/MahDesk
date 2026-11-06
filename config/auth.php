@@ -112,4 +112,11 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    | Reject new passwords that appear in known data breaches (Have I Been
+    | Pwned, free, no account). On by default in production only. See
+    | App\Support\PasswordRules.
+    */
+    'password_check_breached' => (bool) env('PASSWORD_CHECK_BREACHED', env('APP_ENV') === 'production'),
+
 ];

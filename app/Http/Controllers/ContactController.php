@@ -30,10 +30,7 @@ class ContactController extends Controller
                 'tickets',
                 fn ($tickets) => $tickets->visibleTo($user, $workspace),
             ))
-            ->when($q, fn ($query, $search) => $query->where(fn ($w) => $w
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('company', 'like', "%{$search}%")))
+            ->whereContains(['name', 'email', 'company'], $q)
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();

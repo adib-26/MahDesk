@@ -2,7 +2,9 @@
 
 namespace App\Policies;
 
+use App\Authorization\RolePermissions;
 use App\Enums\MemberRole;
+use App\Enums\Permission;
 use App\Models\Contact;
 use App\Models\Ticket;
 use App\Models\User;
@@ -25,7 +27,8 @@ class ContactPolicy
         $role = $contact->workspace->roleOf($user);
 
         return match ($role) {
-            MemberRole::Owner, MemberRole::Admin => true,
+            // Org admins see every customer; others only customers whose tickets they can see.
+            MemberRole::Owner, MemberRole::Admin => RolePermissions::allows($role, Permission::ViewAllTickets),
             MemberRole::Manager => Ticket::query()
                 ->visibleTo($user, $contact->workspace)
                 ->where('contact_id', $contact->id)
@@ -40,7 +43,7 @@ class ContactPolicy
 
     public function create(User $user, Workspace $workspace): bool
     {
-        return in_array($workspace->roleOf($user), [MemberRole::Owner, MemberRole::Admin, MemberRole::Manager], true);
+        return RolePermissions::allows($workspace->roleOf($user), Permission::ManageContacts);
     }
 
     public function update(User $user, Contact $contact): bool

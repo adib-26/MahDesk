@@ -12,33 +12,33 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useCan } from '@/hooks/use-can';
 import { deskRoute } from '@/lib/desk';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, BookText, CheckSquare, LayoutGrid, Plus, Settings2, Users } from 'lucide-react';
+import { BookOpen, BookText, CheckSquare, Inbox, LayoutGrid, Plus, Settings2, Users } from 'lucide-react';
 import AppLogo from './app-logo';
+import { SETTINGS_PAGES } from './settings-nav';
 
 export function AppSidebar() {
-    const { currentWorkspace, workspaces, memberRole, auth } = usePage<SharedData>().props;
+    const { currentWorkspace, workspaces, auth } = usePage<SharedData>().props;
     const workspace = currentWorkspace ?? workspaces[0];
-    const canManage = memberRole === 'owner' || memberRole === 'admin' || memberRole === 'super_admin';
+    const can = useCan();
+    const settingsPage = SETTINGS_PAGES.find((page) => can(page.permission));
     const isSuperAdmin = Boolean(auth.user?.is_super_admin);
 
     const mainNavItems: NavItem[] = workspace
         ? [
               { title: 'Dashboard', url: deskRoute('desk.dashboard', workspace), icon: LayoutGrid },
               { title: 'Tickets', url: deskRoute('desk.tickets.index', workspace), icon: CheckSquare },
+              { title: 'Email', url: deskRoute('desk.emails.index', workspace), icon: Inbox },
               { title: 'Customers', url: deskRoute('desk.contacts.index', workspace), icon: Users },
-              { title: 'Knowledge base', url: deskRoute('desk.kb.index', workspace), icon: BookText },
-              ...(canManage
-                  ? [{ title: 'Settings', url: deskRoute('desk.settings.general', workspace), icon: Settings2 } satisfies NavItem]
-                  : []),
+              ...(can('kb.view') ? [{ title: 'Knowledge base', url: deskRoute('desk.kb.index', workspace), icon: BookText } satisfies NavItem] : []),
+              ...(settingsPage ? [{ title: 'Settings', url: deskRoute(settingsPage.name, workspace), icon: Settings2 } satisfies NavItem] : []),
           ]
         : [];
 
-    const footerNavItems: NavItem[] = workspace
-        ? [{ title: 'Public help center', url: route('help.index', workspace.slug), icon: BookOpen }]
-        : [];
+    const footerNavItems: NavItem[] = workspace ? [{ title: 'Public help center', url: route('help.index', workspace.slug), icon: BookOpen }] : [];
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -46,7 +46,16 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={isSuperAdmin ? route('platform.workspaces.index') : workspace ? deskRoute('desk.dashboard', workspace) : route('dashboard')} prefetch>
+                            <Link
+                                href={
+                                    isSuperAdmin
+                                        ? route('platform.workspaces.index')
+                                        : workspace
+                                          ? deskRoute('desk.dashboard', workspace)
+                                          : route('dashboard')
+                                }
+                                prefetch
+                            >
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>

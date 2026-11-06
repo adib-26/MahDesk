@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Authorization\RolePermissions;
+
 enum MemberRole: string
 {
     /**
@@ -44,34 +46,46 @@ enum MemberRole: string
         return $this !== self::Customer;
     }
 
+    /** Whether this role has the permission. See App\Authorization\RolePermissions. */
+    public function can(Permission $permission): bool
+    {
+        return RolePermissions::allows($this, $permission);
+    }
+
+    /** @return list<Permission> */
+    public function permissions(): array
+    {
+        return RolePermissions::for($this);
+    }
+
     public function canManageWorkspace(): bool
     {
-        return $this->isOrganizationAdmin();
+        return $this->can(Permission::ManageWorkspace);
     }
 
     public function canManageMembers(): bool
     {
-        return $this->isOrganizationAdmin();
+        return $this->can(Permission::ManageMembers);
     }
 
     public function canManageTeams(): bool
     {
-        return $this->isOrganizationAdmin();
+        return $this->can(Permission::ManageTeams);
     }
 
     public function canViewAnalytics(): bool
     {
-        return $this->isOrganizationAdmin() || $this === self::Manager;
+        return $this->can(Permission::ViewAnalytics);
     }
 
     public function canAccessAllWorkspaceTickets(): bool
     {
-        return $this->isOrganizationAdmin();
+        return $this->can(Permission::ViewAllTickets);
     }
 
     public function canManageKnowledgeBase(): bool
     {
-        return $this->isOrganizationAdmin();
+        return $this->can(Permission::ManageKnowledgeBase);
     }
 
     /**

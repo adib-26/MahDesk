@@ -1,4 +1,4 @@
-import type { TicketChannel, TicketPriority, TicketStatus } from '@/types';
+import type { TicketCategory, TicketChannel, TicketPriority, TicketStatus } from '@/types';
 
 export function deskRoute(name: string, workspace: { slug: string }, params: Record<string, string | number> = {}) {
     return route(name, { workspace: workspace.slug, ...params });
@@ -24,6 +24,15 @@ export const CHANNEL_LABELS: Record<TicketChannel, string> = {
     web: 'Web',
     chat: 'Chat',
     phone: 'Phone',
+};
+
+export const CATEGORY_LABELS: Record<TicketCategory, string> = {
+    general: 'General',
+    billing: 'Billing',
+    technical: 'Technical',
+    account: 'Account',
+    shipping: 'Shipping',
+    feature_request: 'Feature request',
 };
 
 export function formatMinutes(minutes: number | null | undefined): string {

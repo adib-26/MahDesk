@@ -25,12 +25,15 @@ interface CustomerTicket {
     priority: TicketPriority;
     created_at: string | null;
     updated_at: string | null;
+    satisfaction_rating: number | null;
     workspace: { name: string };
     messages: CustomerMessage[];
 }
 
 export default function CustomerTicketShow({ ticket, attachmentLimits }: { ticket: CustomerTicket; attachmentLimits: AttachmentLimits }) {
     const reply = useForm<{ body: string; attachments: File[] }>({ body: '', attachments: [] });
+    const rating = useForm<{ rating: number }>({ rating: ticket.satisfaction_rating ?? 0 });
+    const canRate = ticket.status === 'resolved' || ticket.status === 'closed';
 
     const submitReply: FormEventHandler = (event) => {
         event.preventDefault();
@@ -51,7 +54,7 @@ export default function CustomerTicketShow({ ticket, attachmentLimits }: { ticke
                         <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-sm">
                             <AppLogoIcon className="size-4.5" />
                         </span>
-                        <span className="font-display text-lg font-semibold tracking-tight">OmniDesk Support</span>
+                        <span className="font-display text-lg font-semibold tracking-tight">MahbubDesk</span>
                     </Link>
                     <span className="text-muted-foreground text-sm">{ticket.workspace.name}</span>
                 </div>
@@ -99,6 +102,38 @@ export default function CustomerTicketShow({ ticket, attachmentLimits }: { ticke
                         ))
                     )}
                 </section>
+
+                {canRate && (
+                    <section className="bg-card space-y-3 rounded-sm border p-4 sm:p-6">
+                        <div>
+                            <h2 className="font-display text-lg font-semibold tracking-tight">How did we do?</h2>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                                {ticket.satisfaction_rating
+                                    ? `You rated this ${ticket.satisfaction_rating} out of 5. You can change it.`
+                                    : 'Rate the help you received. Your score appears on the team’s satisfaction report.'}
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2" role="group" aria-label="Satisfaction rating">
+                            {[1, 2, 3, 4, 5].map((score) => (
+                                <Button
+                                    key={score}
+                                    type="button"
+                                    size="sm"
+                                    variant={ticket.satisfaction_rating === score ? 'default' : 'outline'}
+                                    disabled={rating.processing}
+                                    aria-pressed={ticket.satisfaction_rating === score}
+                                    onClick={() => {
+                                        rating.transform(() => ({ rating: score }));
+                                        rating.post(route('customer.tickets.rate', { ticket: ticket.id }), { preserveScroll: true });
+                                    }}
+                                >
+                                    {score}
+                                </Button>
+                            ))}
+                        </div>
+                        <InputError message={rating.errors.rating} />
+                    </section>
+                )}
 
                 <section className="bg-card space-y-4 rounded-sm border p-4 sm:p-6">
                     <div>

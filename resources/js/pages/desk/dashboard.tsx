@@ -115,8 +115,9 @@ function Rating({ value }: { value: number | null }) {
 }
 
 export default function DeskDashboard({ analytics, recentTickets }: Props) {
-    const { currentWorkspace } = usePage<SharedData>().props;
+    const { currentWorkspace, memberRole } = usePage<SharedData>().props;
     const workspace = currentWorkspace!;
+    const seesOnlyTheirTickets = memberRole === 'agent' || memberRole === 'manager';
     const createdInPeriod = analytics.series.reduce((total, day) => total + day.created, 0);
     const resolvedInPeriod = analytics.series.reduce((total, day) => total + day.resolved, 0);
     const netTicketChange = createdInPeriod - resolvedInPeriod;
@@ -131,7 +132,11 @@ export default function DeskDashboard({ analytics, recentTickets }: Props) {
                     <div>
                         <p className="stamp-label text-muted-foreground">{workspace.name} · last 30 days</p>
                         <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight">Support analytics</h1>
-                        <p className="text-muted-foreground mt-1 text-sm">A clear view of ticket volume, service health, and team performance.</p>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                            {seesOnlyTheirTickets
+                                ? 'Your numbers, from the tickets you can see.'
+                                : 'A clear view of ticket volume, service health, and team performance.'}
+                        </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
                         <Link href={deskRoute('desk.tickets.index', workspace)}>View tickets</Link>

@@ -63,6 +63,7 @@ class RolePermissionsTest extends TestCase
                 'desk.access',
                 'tickets.internal-notes',
                 'kb.view',
+                'analytics.view',
             ],
             MemberRole::Customer->value => [
                 'portal.access',

@@ -225,6 +225,47 @@ class CustomerTicketPortalTest extends TestCase
         $this->assertDatabaseCount('ticket_messages', 0);
     }
 
+    public function test_customer_analytics_count_only_their_tickets(): void
+    {
+        $customer = User::factory()->create();
+        $other = User::factory()->create();
+        [$workspace, $contact] = $this->customerWorkspace($customer, 'Acme Support');
+        $otherContact = $this->customerContact($workspace, $other);
+        $this->ticket($workspace, $contact, 1, 'Mine');
+        $this->ticket($workspace, $otherContact, 2, 'Not mine');
+
+        $this->actingAs($customer)
+            ->get('/customer/tickets', $this->inertiaHeaders())
+            ->assertOk()
+            ->assertJsonPath('props.analytics.0.total', 1)
+            ->assertJsonPath('props.analytics.0.open', 1);
+    }
+
+    public function test_customer_can_rate_a_resolved_ticket(): void
+    {
+        $customer = User::factory()->create();
+        $other = User::factory()->create();
+        [$workspace, $contact] = $this->customerWorkspace($customer, 'Acme Support');
+        $this->customerContact($workspace, $other);
+        $ticket = $this->ticket($workspace, $contact, 1, 'Resolved request');
+
+        $this->actingAs($customer)
+            ->post("/customer/tickets/{$ticket->id}/rating", ['rating' => 5])
+            ->assertStatus(422);
+
+        $ticket->forceFill(['status' => TicketStatus::Resolved, 'resolved_at' => now()])->save();
+
+        $this->actingAs($other)
+            ->post("/customer/tickets/{$ticket->id}/rating", ['rating' => 1])
+            ->assertForbidden();
+
+        $this->actingAs($customer)
+            ->post("/customer/tickets/{$ticket->id}/rating", ['rating' => 5])
+            ->assertRedirect();
+
+        $this->assertSame(5, $ticket->fresh()->satisfaction_rating);
+    }
+
     /**
      * @return array{Workspace, Contact}
      */

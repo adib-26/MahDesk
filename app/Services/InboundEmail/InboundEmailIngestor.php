@@ -42,7 +42,10 @@ class InboundEmailIngestor
             ? ProcessInboundEmail::dispatchSync($record->id)
             : ProcessInboundEmail::dispatch($record->id);
 
-        return $record->refresh();
+        $fresh = $record->refresh();
+        $fresh->wasRecentlyCreated = true;
+
+        return $fresh;
     }
 
     private function find(string $provider, string $providerId): ?InboundEmail

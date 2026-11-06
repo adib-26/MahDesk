@@ -30,6 +30,7 @@ class Ticket extends Model
         'contact_id', 'team_id', 'assignee_id', 'sla_policy_id',
         'first_response_due_at', 'resolution_due_at',
         'first_responded_at', 'resolved_at', 'closed_at',
+        'satisfaction_rating', 'satisfaction_rated_at',
     ];
 
     protected $appends = ['first_response_breached', 'resolution_breached'];
@@ -46,6 +47,7 @@ class Ticket extends Model
             'first_responded_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'satisfaction_rated_at' => 'datetime',
         ];
     }
 

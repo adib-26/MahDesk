@@ -111,6 +111,7 @@ export interface Ticket {
     first_responded_at: string | null;
     resolved_at: string | null;
     closed_at: string | null;
+    satisfaction_rating?: number | null;
     first_response_breached: boolean;
     resolution_breached: boolean;
     created_at: string;

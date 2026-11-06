@@ -8,7 +8,7 @@ The interface is a Laravel 12 and Inertia React app. Data stays in SQLite for lo
 
 - Run more than one workspace, with roles for owner, organization admin, manager, agent, and customer.
 - Triage tickets by status, priority, category, assignee, and tag. Replies can include files. Internal notes stay off the customer portal.
-- Open the analytics dashboard and follow a metric into the matching ticket list.
+- Open the analytics dashboard and follow a metric into the matching ticket list. Customers can rate a resolved ticket from 1 to 5, and that score feeds satisfaction.
 - Publish a help center, invite teammates, and manage SLA policies.
 - Define automation rules: when a ticket is created, updated, or still unresolved, assign a team, notify someone, set an SLA, or escalate to a manager.
 - Issue a Sanctum API token and call `/api/v1` for the signed-in user's organizations and tickets.

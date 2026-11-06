@@ -62,6 +62,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('tickets/{ticket}/messages', [CustomerTicketController::class, 'storeReply'])
             ->middleware('throttle:ticket-writes')
             ->name('tickets.messages.store');
+        Route::post('tickets/{ticket}/rating', [CustomerTicketController::class, 'rate'])
+            ->middleware('throttle:ticket-writes')
+            ->name('tickets.rate');
         Route::get('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'customer'])
             ->middleware('throttle:downloads')
             ->name('tickets.attachments.show');

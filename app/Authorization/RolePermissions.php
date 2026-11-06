@@ -14,7 +14,7 @@ use App\Enums\Permission;
  *   - Managers with CreateTickets / AssignTickets act only within their teams.
  *   - Managers with ViewAnalytics see reports only if they belong to a team.
  *   - Agents see tickets assigned to them (plus unassigned team tickets when
- *     their membership allows it).
+ *     their membership allows it), and their dashboard counts only that set.
  *   - Customers see only their own tickets and contact record.
  */
 final class RolePermissions
@@ -33,6 +33,8 @@ final class RolePermissions
             Permission::AccessDesk,
             Permission::ViewInternalNotes,
             Permission::ViewKnowledgeBase,
+            // Their own queue only. AnalyticsService already limits figures to visible tickets.
+            Permission::ViewAnalytics,
         ];
 
         $manager = [
@@ -41,7 +43,6 @@ final class RolePermissions
             Permission::AssignTickets,
             Permission::ManageContacts,
             Permission::ManageTags,
-            Permission::ViewAnalytics,
         ];
 
         $admin = [

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\AnalyticsService;
 use App\Services\TicketAttachmentService;
 use App\Services\TicketService;
 use App\Support\AttachmentLimits;
@@ -24,6 +26,7 @@ class CustomerTicketController extends Controller
     public function __construct(
         private TicketAttachmentService $attachments,
         private TicketService $tickets,
+        private AnalyticsService $analytics,
     ) {}
 
     /**
@@ -54,12 +57,26 @@ class CustomerTicketController extends Controller
             ->sortBy('name')
             ->values();
 
+        $workspaces = $this->customerWorkspaces($user)->get();
+
         return Inertia::render('customer/tickets/index', [
             'ticketGroups' => $ticketGroups,
-            'workspaces' => $this->customerWorkspaces($user)->get()->map(fn (Workspace $workspace) => [
+            'workspaces' => $workspaces->map(fn (Workspace $workspace) => [
                 'id' => $workspace->id,
                 'name' => $workspace->name,
             ])->values(),
+            'analytics' => $workspaces->map(function (Workspace $workspace) use ($user) {
+                $kpis = $this->analytics->forWorkspace($workspace, $user)['kpis'];
+
+                return [
+                    'id' => $workspace->id,
+                    'name' => $workspace->name,
+                    'total' => $kpis['totalTickets'],
+                    'open' => $kpis['open'],
+                    'resolved' => $kpis['resolvedTickets'],
+                    'satisfaction' => $kpis['customerSatisfaction'],
+                ];
+            })->values(),
         ]);
     }
 
@@ -168,6 +185,29 @@ class CustomerTicketController extends Controller
     }
 
     /**
+     * Record the customer's 1–5 rating once the ticket is resolved or closed.
+     */
+    public function rate(Request $request, Ticket $ticket): RedirectResponse
+    {
+        Gate::authorize('view', $ticket);
+
+        $ticket->loadMissing('contact:id,user_id');
+        abort_unless($ticket->contact?->user_id === $request->user()->getKey(), 403);
+        abort_unless(in_array($ticket->status, [TicketStatus::Resolved, TicketStatus::Closed], true), 422);
+
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'between:1,5'],
+        ]);
+
+        $ticket->forceFill([
+            'satisfaction_rating' => $validated['rating'],
+            'satisfaction_rated_at' => now(),
+        ])->save();
+
+        return back()->with('success', 'Thanks for the rating.');
+    }
+
+    /**
      * Serialize only metadata that is appropriate for the customer portal.
      */
     private function ticketSummary(Ticket $ticket): array
@@ -178,6 +218,7 @@ class CustomerTicketController extends Controller
             'subject' => $ticket->subject,
             'status' => $ticket->status->value,
             'priority' => $ticket->priority->value,
+            'satisfaction_rating' => $ticket->satisfaction_rating,
             'updated_at' => $ticket->updated_at?->toIso8601String(),
         ];
     }

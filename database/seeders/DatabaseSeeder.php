@@ -330,6 +330,11 @@ class DatabaseSeeder extends Seeder
             ], $resolvedAt);
         }
 
+        if ($resolved) {
+            $ticket->satisfaction_rating = [5, 4, 5, 3][$number % 4];
+            $ticket->satisfaction_rated_at = $ticket->resolved_at;
+        }
+
         $ticket->save();
 
         if ($tagNames !== []) {

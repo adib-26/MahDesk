@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Authorization\RolePermissions;
-use App\Enums\MemberRole;
 use App\Enums\Permission;
 use App\Models\User;
 use App\Models\Workspace;
@@ -71,12 +70,7 @@ class WorkspacePolicy
 
         $role = $workspace->roleOf($user);
 
-        if (! RolePermissions::allows($role, Permission::ViewAnalytics)) {
-            return false;
-        }
-
-        // Reports are team-scoped for managers, so a manager without a team has nothing to see.
-        return $role !== MemberRole::Manager || $workspace->teamsFor($user)->exists();
+        return RolePermissions::allows($role, Permission::ViewAnalytics);
     }
 
     private function isPlatformSuperAdmin(User $user): bool

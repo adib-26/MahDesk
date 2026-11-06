@@ -30,7 +30,33 @@ interface CustomerWorkspace {
     name: string;
 }
 
-export default function CustomerTicketsIndex({ ticketGroups, workspaces }: { ticketGroups: TicketGroup[]; workspaces: CustomerWorkspace[] }) {
+interface PersonalAnalytics {
+    id: number;
+    name: string;
+    total: number;
+    open: number;
+    resolved: number;
+    satisfaction: number | null;
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div className="bg-card rounded-sm border p-4">
+            <p className="stamp-label text-muted-foreground text-[10px]">{label}</p>
+            <p className="font-display mt-2 text-3xl font-medium tabular-nums">{value}</p>
+        </div>
+    );
+}
+
+export default function CustomerTicketsIndex({
+    ticketGroups,
+    workspaces,
+    analytics,
+}: {
+    ticketGroups: TicketGroup[];
+    workspaces: CustomerWorkspace[];
+    analytics: PersonalAnalytics[];
+}) {
     const [showForm, setShowForm] = useState(false);
     const form = useForm({ workspace_id: workspaces[0]?.id ?? '', subject: '', body: '' });
 
@@ -54,7 +80,7 @@ export default function CustomerTicketsIndex({ ticketGroups, workspaces }: { tic
                         <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-sm">
                             <AppLogoIcon className="size-4.5" />
                         </span>
-                        <span className="font-display text-lg font-semibold tracking-tight">OmniDesk Support</span>
+                        <span className="font-display text-lg font-semibold tracking-tight">MahbubDesk</span>
                     </Link>
                     <div className="flex items-center gap-3">
                         <span className="text-muted-foreground text-sm">My tickets</span>
@@ -76,6 +102,17 @@ export default function CustomerTicketsIndex({ ticketGroups, workspaces }: { tic
                     <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight">Your support tickets</h1>
                     <p className="text-muted-foreground mt-1 text-sm">Follow conversations and reply to your support requests.</p>
                 </div>
+
+                {analytics.length > 0 && (
+                    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {analytics.flatMap((row) => [
+                            <Stat key={`${row.id}-total`} label={analytics.length > 1 ? `${row.name} · tickets` : 'Your tickets'} value={row.total} />,
+                            <Stat key={`${row.id}-open`} label="Open" value={row.open} />,
+                            <Stat key={`${row.id}-resolved`} label="Resolved, 30 days" value={row.resolved} />,
+                            <Stat key={`${row.id}-csat`} label="Your ratings" value={row.satisfaction === null ? '—' : `${row.satisfaction}%`} />,
+                        ])}
+                    </section>
+                )}
 
                 {showForm && (
                     <section className="bg-card space-y-4 rounded-sm border p-4 sm:p-6">

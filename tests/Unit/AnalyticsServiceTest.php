@@ -37,6 +37,8 @@ class AnalyticsServiceTest extends TestCase
             'first_responded_at' => now()->subDays(2)->addMinutes(20),
             'resolution_due_at' => now()->addDay(),
             'resolved_at' => now()->subDay(),
+            'satisfaction_rating' => 4,
+            'satisfaction_rated_at' => now()->subDay(),
         ]);
 
         $this->ticket($workspace, $contact, 2, [
@@ -55,8 +57,8 @@ class AnalyticsServiceTest extends TestCase
         $this->assertSame(1, $analytics['kpis']['resolvedTickets']);
         $this->assertSame(1, $analytics['kpis']['slaBreaches']);
         $this->assertSame(50, $analytics['kpis']['slaCompliance']);
-        $this->assertNull($analytics['kpis']['customerSatisfaction']);
-        $this->assertSame(0, $analytics['kpis']['csatResponses']);
+        $this->assertSame(80, $analytics['kpis']['customerSatisfaction']);
+        $this->assertSame(1, $analytics['kpis']['csatResponses']);
         $categories = collect($analytics['byCategory'])->pluck('count', 'name');
         $this->assertSame(1, $categories->get('billing'));
         // Tickets created without a category fall back to the column default.
@@ -68,8 +70,8 @@ class AnalyticsServiceTest extends TestCase
         $this->assertSame(1, $agent['ticketsResolved']);
         $this->assertEquals(20, $agent['avgResponseMinutes']);
         $this->assertSame(100, $agent['slaCompliance']);
-        $this->assertNull($agent['customerRating']);
-        $this->assertSame(0, $agent['customerRatingResponses']);
+        $this->assertEquals(4, $agent['customerRating']);
+        $this->assertSame(1, $agent['customerRatingResponses']);
     }
 
     /**

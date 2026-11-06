@@ -29,7 +29,7 @@ class TwoFactorService
     public function provisioningUri(User $user, string $secret): string
     {
         return $this->google2fa->getQRCodeUrl(
-            (string) config('app.name', 'OmniDesk'),
+            (string) config('app.name', 'MahbubDesk'),
             $user->email,
             $secret,
         );

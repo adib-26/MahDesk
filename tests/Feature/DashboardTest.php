@@ -33,6 +33,30 @@ class DashboardTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_agents_see_their_own_analytics_instead_of_the_ticket_list(): void
+    {
+        $agent = User::factory()->create();
+        $workspace = \App\Models\Workspace::create(['name' => 'Acme', 'slug' => 'acme']);
+        $workspace->members()->attach($agent, ['role' => \App\Enums\MemberRole::Agent->value]);
+
+        $this->actingAs($agent)
+            ->get('/w/acme')
+            ->assertOk()
+            ->assertSee('desk/dashboard', false);
+    }
+
+    public function test_a_manager_without_a_team_still_opens_analytics(): void
+    {
+        $manager = User::factory()->create();
+        $workspace = \App\Models\Workspace::create(['name' => 'Acme', 'slug' => 'acme-manager']);
+        $workspace->members()->attach($manager, ['role' => \App\Enums\MemberRole::Manager->value]);
+
+        $this->actingAs($manager)
+            ->get('/w/acme-manager')
+            ->assertOk()
+            ->assertSee('desk/dashboard', false);
+    }
+
     public function test_super_admins_are_sent_to_the_platform_console()
     {
         $user = User::factory()->create();

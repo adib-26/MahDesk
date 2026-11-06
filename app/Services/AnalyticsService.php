@@ -51,6 +51,12 @@ class AnalyticsService
             $resolvedInWindow->avg(fn ($t) => $t->created_at->diffInMinutes($t->resolved_at))
         );
 
+        $rated = Ticket::query()
+            ->visibleTo($user, $workspace)
+            ->whereNotNull('satisfaction_rating')
+            ->where('satisfaction_rated_at', '>=', $since)
+            ->get(['id', 'assignee_id', 'satisfaction_rating']);
+
         $withSla = $open
             ->merge($recent)
             ->unique('id')
@@ -86,8 +92,10 @@ class AnalyticsService
                 'avgFirstResponseMinutes' => $avgFirstResponseMinutes,
                 'avgResolutionMinutes' => $avgResolutionMinutes,
                 'slaCompliance' => $slaCompliance,
-                'customerSatisfaction' => null,
-                'csatResponses' => 0,
+                'customerSatisfaction' => $rated->isEmpty()
+                    ? null
+                    : (int) round($rated->avg('satisfaction_rating') / 5 * 100),
+                'csatResponses' => $rated->count(),
             ],
             'series' => $this->dailySeries($createdInWindow, $resolvedInWindow, $since),
             'byStatus' => $this->countBy($open, fn ($t) => $t->status->value),
@@ -95,7 +103,7 @@ class AnalyticsService
             'byPriorityInPeriod' => $this->countBy($createdInWindow, fn ($t) => $t->priority->value),
             'byChannel' => $this->countBy($createdInWindow, fn ($t) => $t->channel->value),
             'byCategory' => $this->countBy($createdInWindow, fn ($t) => $t->category->value),
-            'agents' => $this->agentLeaderboard($workspace, $user, $open, $createdInWindow, $resolvedInWindow),
+            'agents' => $this->agentLeaderboard($workspace, $user, $open, $createdInWindow, $resolvedInWindow, $rated),
         ];
     }
 
@@ -127,11 +135,13 @@ class AnalyticsService
             ->all();
     }
 
-    private function agentLeaderboard(Workspace $workspace, User $user, $open, $createdInWindow, $resolvedInWindow): array
+    private function agentLeaderboard(Workspace $workspace, User $user, $open, $createdInWindow, $resolvedInWindow, $rated): array
     {
         $members = $workspace->members()->wherePivotIn('role', MemberRole::staffValues())->get();
 
-        if (! $user->isSuperAdmin() && ! $workspace->roleOf($user)?->isOrganizationAdmin()) {
+        if ($workspace->roleOf($user) === MemberRole::Agent) {
+            $members = $members->where('id', $user->getKey())->values();
+        } elseif (! $user->isSuperAdmin() && ! $workspace->roleOf($user)?->isOrganizationAdmin()) {
             $teamMemberIds = $workspace->teamsFor($user)
                 ->with('members:id')
                 ->get()
@@ -142,7 +152,7 @@ class AnalyticsService
             $members = $members->whereIn('id', $teamMemberIds)->values();
         }
 
-        return $members->map(function ($member) use ($open, $createdInWindow, $resolvedInWindow) {
+        return $members->map(function ($member) use ($open, $createdInWindow, $resolvedInWindow, $rated) {
             // "Assigned" is current queue workload, so it intentionally excludes
             // terminal tickets. Other activity metrics share the 30-day window.
             $assigned = $open->where('assignee_id', $member->id);
@@ -156,6 +166,7 @@ class AnalyticsService
             $resolutionSlaBreaches = $withResolutionSla
                 ->filter(fn ($t) => $t->resolved_at->greaterThan($t->resolution_due_at))
                 ->count();
+            $ratings = $rated->where('assignee_id', $member->id);
 
             return [
                 'id' => $member->id,
@@ -177,9 +188,8 @@ class AnalyticsService
                 'slaCompliance' => $withResolutionSla->isEmpty()
                     ? null
                     : (int) round(($withResolutionSla->count() - $resolutionSlaBreaches) / $withResolutionSla->count() * 100),
-                // The schema has no ticket/customer-rating relation yet.
-                'customerRating' => null,
-                'customerRatingResponses' => 0,
+                'customerRating' => $ratings->isEmpty() ? null : round($ratings->avg('satisfaction_rating'), 1),
+                'customerRatingResponses' => $ratings->count(),
             ];
         })->sortByDesc('resolvedLast30Days')->values()->all();
     }

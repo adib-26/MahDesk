@@ -246,6 +246,9 @@ export default function TicketShow({ ticket, agents, workspaceTags, contactTicke
                             <p className="text-muted-foreground">{ticket.contact?.email}</p>
                             {ticket.contact?.company && <p>{ticket.contact.company}</p>}
                             <p className="text-muted-foreground text-xs">{contactTicketCount} tickets on file</p>
+                            {ticket.satisfaction_rating ? (
+                                <p className="text-xs">Customer rating {ticket.satisfaction_rating} / 5</p>
+                            ) : null}
                         </CardContent>
                     </Card>
 

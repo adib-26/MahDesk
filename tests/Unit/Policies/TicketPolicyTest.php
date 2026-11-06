@@ -126,18 +126,13 @@ class TicketPolicyTest extends TestCase
         $this->assertTrue($policy->create($superAdmin));
     }
 
-    public function test_manager_analytics_requires_membership_in_a_workspace_team(): void
+    public function test_manager_can_open_analytics_without_a_team(): void
     {
         $workspace = $this->workspace('analytics');
         $manager = User::factory()->create();
         $workspace->members()->attach($manager, ['role' => MemberRole::Manager->value]);
 
         $policy = new WorkspacePolicy;
-
-        $this->assertFalse($policy->viewAnalytics($manager, $workspace));
-
-        $team = Team::create(['workspace_id' => $workspace->id, 'name' => 'Support']);
-        $team->members()->attach($manager);
 
         $this->assertTrue($policy->viewAnalytics($manager, $workspace));
     }

@@ -42,7 +42,7 @@ npm run build
 | `super@desk.test` | Platform admin | Platform workspace console |
 | `marina@harbor.test` | Marina Ortiz, Harbor owner | Harbor Digital desk |
 
-Contacts such as `sofia@northline.com` are customers on tickets. They do not have a password until someone registers with that same email address. Registration links the contact and gives the new user the customer role. New accounts must verify their email before they can use the desk.
+Contacts such as `sofia@northline.com` are customers on tickets. They do not have a password until someone registers with that same email address. Registration links the contact and gives the new user the customer role. New accounts must verify their email before they can use the desk. Tick "Remember me" on the login form to stay signed in on that browser for 30 days, until you log out.
 
 ## Run it
 

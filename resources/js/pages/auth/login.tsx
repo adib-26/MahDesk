@@ -87,7 +87,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             checked={data.remember}
                             onCheckedChange={(checked) => setData('remember', checked === true)}
                         />
-                        <Label htmlFor="remember">Remember me</Label>
+                        <Label htmlFor="remember">Remember me for 30 days</Label>
                     </div>
 
                     <Button type="submit" className="mt-4 w-full" tabIndex={4} disabled={processing}>

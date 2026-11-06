@@ -39,6 +39,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Minutes the "Remember me" cookie lasts. Logging out clears it.
+            'remember' => 60 * 24 * 30,
         ],
     ],
 

@@ -1,6 +1,8 @@
 # MahbubDesk
 
-A multi-workspace customer support desk. Agents work tickets, customers use a portal, and each workspace keeps its own queue, knowledge base, SLA targets, and automation rules.
+## About
+
+MahbubDesk is a multi-workspace customer support desk. Agents work tickets, customers use a portal, and each workspace keeps its own queue, knowledge base, SLA targets, and automation rules.
 
 The interface is a Laravel 12 and Inertia React app. Data stays in SQLite for local development. Outgoing mail is captured by [Mailpit](https://mailpit.axllent.org/). Inbound support mail can be pulled from the free [testmail.app](https://testmail.app) inbox.
 
